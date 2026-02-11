@@ -1,10 +1,10 @@
 FROM rust:1.86-slim AS builder
 WORKDIR /src
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock* ./
 COPY apps/server apps/server
 COPY crates crates
-RUN cargo build --release -p payq-server
+RUN cargo build --release -p nyxbid-server
 
 RUN ARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH) && \
     mkdir -p /export/usr/lib/${ARCH} && \
@@ -12,8 +12,8 @@ RUN ARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH) && \
     cp /usr/lib/${ARCH}/libcrypto.so.3 /export/usr/lib/${ARCH}/
 
 FROM gcr.io/distroless/cc-debian12:nonroot
-COPY --from=builder /src/target/release/payq-server /usr/local/bin/payq-server
+COPY --from=builder /src/target/release/nyxbid-server /usr/local/bin/nyxbid-server
 COPY --from=builder /export/usr/lib/ /usr/lib/
 ENV RUST_LOG=info
 EXPOSE 8080
-ENTRYPOINT ["/usr/local/bin/payq-server"]
+ENTRYPOINT ["/usr/local/bin/nyxbid-server"]
