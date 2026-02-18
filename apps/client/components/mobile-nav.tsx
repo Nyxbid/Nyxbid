@@ -7,9 +7,9 @@ import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/agents", label: "Agents" },
-  { href: "/receipts", label: "Receipts" },
-  { href: "/policies", label: "Policies" },
+  { href: "/intents", label: "Intents" },
+  { href: "/quotes", label: "Quotes" },
+  { href: "/fills", label: "Fills" },
 ];
 
 export function MobileNav() {
@@ -20,7 +20,7 @@ export function MobileNav() {
     <div className="md:hidden">
       <div className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
         <Link href="/" className="text-lg font-semibold tracking-tight">
-          payq
+          nyxbid
         </Link>
         <button
           onClick={() => setOpen(!open)}

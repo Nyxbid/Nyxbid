@@ -2,38 +2,34 @@ import Link from "next/link";
 
 const features = [
   {
-    title: "On-chain policy",
+    title: "Sealed-bid RFQ",
     description:
-      "Spend limits, per-transaction caps, and tool allowlists enforced by a Solana program. No trust assumptions.",
+      "Makers submit commitments, not prices. Nobody sees the book — not even the venue. Price discovery stays private until resolution.",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-        <path d="M7 11V7a5 5 0 0110 0v4" />
+        <rect x="4" y="10" width="16" height="10" rx="2" />
+        <path d="M8 10V7a4 4 0 018 0v3" />
       </svg>
     ),
   },
   {
-    title: "Spend receipts",
+    title: "Atomic settlement",
     description:
-      "Every API call produces a receipt with a hash-linked audit trail. Optionally anchored on-chain for immutability.",
+      "Winning quote is revealed and settled in a single Solana transaction. HTLC-style escrow guarantees no half-fills and no frontrunning.",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
+        <path d="M12 2v20M4 12h16" />
       </svg>
     ),
   },
   {
-    title: "Multi-LLM routing",
+    title: "Agent-native via MCP",
     description:
-      "Gemini, Groq, OpenAI. The server routes agent requests to the right provider and tracks cost per call.",
+      "The full intent lifecycle is exposed as Model Context Protocol tools. AI agents quote, auction and settle without glue code.",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="16 18 22 12 16 6" />
-        <polyline points="8 6 2 12 8 18" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3" />
       </svg>
     ),
   },
@@ -42,21 +38,21 @@ const features = [
 const steps = [
   {
     step: "01",
-    title: "Agent submits a proposal",
+    title: "Taker posts an intent",
     description:
-      "An agent sends a tool request with its ID and prompt. The server checks the policy on-chain before proceeding.",
+      "A taker broadcasts `buy 50k SOL up to $195` as an intent PDA. No book reveals. A reveal deadline is set.",
   },
   {
     step: "02",
-    title: "Tool executes, cost recorded",
+    title: "Makers commit sealed quotes",
     description:
-      "The server calls the tool (LLM, oracle, API), estimates cost in USDC, and creates a spend receipt with a SHA-256 hash.",
+      "Makers submit hash commitments of (price, size, nonce). Nothing is readable on-chain until reveal. No frontrunning surface.",
   },
   {
     step: "03",
-    title: "Receipt anchored on Solana",
+    title: "Resolve + settle atomically",
     description:
-      "The receipt is written to a PDA on Solana. Daily spend counters update atomically. The dashboard shows it in real time.",
+      "At the deadline, makers reveal. The program picks the best valid quote and settles via HTLC-style escrow in one transaction.",
   },
 ];
 
@@ -65,29 +61,29 @@ export default function LandingPage() {
     <>
       <section className="mx-auto max-w-3xl px-6 pb-20 pt-24 text-center">
         <p className="text-sm font-medium tracking-wide text-accent">
-          Agentic payments on Solana
+          OTC infrastructure for Solana
         </p>
         <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-          Pay-per-call for AI agents.
+          Sealed-bid RFQ.
           <br />
-          Policy on-chain.
+          Atomic settlement.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
-          Program-enforced spend limits, hash-linked receipts, and multi-LLM
-          routing. The financial control plane for autonomous agents.
+          Nyxbid is a private venue for OTC-size trades on Solana. Sealed bids,
+          atomic settlement, agent-native via MCP.
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link
             href="/docs"
             className="rounded-md bg-foreground px-5 py-2.5 text-sm font-medium text-background hover:bg-foreground/90"
           >
-            Get started
+            Read the docs
           </Link>
           <Link
             href="/dashboard"
             className="rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-accent/5"
           >
-            View dashboard
+            Open the app
           </Link>
         </div>
       </section>
@@ -114,7 +110,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-6 py-20">
           <h2 className="text-2xl font-bold tracking-tight">How it works</h2>
           <p className="mt-2 text-sm text-muted">
-            Three steps from agent request to on-chain receipt.
+            Three phases from intent to settlement.
           </p>
           <div className="mt-12 grid gap-10 md:grid-cols-3">
             {steps.map((s) => (
@@ -134,24 +130,21 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-6 py-20">
           <h2 className="text-2xl font-bold tracking-tight">Architecture</h2>
           <p className="mt-2 text-sm text-muted">
-            Rust server, Next.js dashboard, Anchor program.
+            Anchor program + Rust server + Next.js surface.
           </p>
           <div className="mt-8 overflow-hidden rounded-lg border border-border bg-card">
             <pre className="overflow-x-auto px-6 py-5 font-mono text-sm leading-relaxed text-muted">
-{`┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
-│   Agent       │────▶│   payq-server    │────▶│   Solana      │
-│   (any HTTP   │     │   (Rust / Axum)  │     │   (Anchor)    │
-│    client)    │◀────│                  │     │               │
-└──────────────┘     │  ┌────────────┐  │     │  Vault PDA    │
-                     │  │  x402      │  │     │  SpendRecord  │
-┌──────────────┐     │  │  routing   │  │     └──────────────┘
-│   Dashboard   │────▶│  └────────────┘  │
-│   (Next.js)   │ SSE │                  │     ┌──────────────┐
-│               │◀────│  ┌────────────┐  │────▶│  LLM APIs    │
-└──────────────┘     │  │  Solana    │  │     │  Gemini/Groq  │
-                     │  │  client    │  │     │  OpenAI       │
-                     │  └────────────┘  │     └──────────────┘
-                     └──────────────────┘`}
+{`taker ─────────────┐                              ┌──── Anchor program
+                   ▼                              ▼     Intent / Quote /
+      ┌────────────────────────┐   settle tx    Escrow / Receipt
+      │    nyxbid-server       │ ───────────────►
+      │    (Rust / Axum)       │
+      │                        │
+      │  intent  auction  mcp  │ ◀── MCP tools ── AI maker/taker agents
+      └────────────────────────┘
+                   ▲
+                   │ SSE
+              nyxbid-client (Next.js)`}
             </pre>
           </div>
         </div>
