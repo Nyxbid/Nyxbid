@@ -1,0 +1,64 @@
+{
+	email {$ACME_EMAIL}
+}
+
+(common_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+	}
+}
+
+(rate_limit) {
+	@api_paths path /api/*
+	rate_limit @api_paths {
+		zone api_ip {
+			key {remote_host}
+			events 60
+			window 1m
+		}
+	}
+}
+
+{$API_HOST:api.nyxbid.trade} {
+	import common_headers
+	import rate_limit
+	encode gzip
+	reverse_proxy {$API_UPSTREAM:127.0.0.1:8080} {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+{$APP_HOST:app.nyxbid.trade} {
+	import common_headers
+	encode gzip
+	reverse_proxy {$APP_UPSTREAM:127.0.0.1:3000} {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+{$DOCS_HOST:docs.nyxbid.trade} {
+	import common_headers
+	encode gzip
+	reverse_proxy {$DOCS_UPSTREAM:127.0.0.1:3000} {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+{$WWW_HOST:nyxbid.trade} {
+	import common_headers
+	encode gzip
+	reverse_proxy {$WWW_UPSTREAM:127.0.0.1:3000} {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
