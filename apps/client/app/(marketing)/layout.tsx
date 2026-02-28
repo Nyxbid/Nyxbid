@@ -3,7 +3,7 @@ import Link from "next/link";
 const navLinks = [
   { href: "/docs", label: "Docs" },
   { href: "/dashboard", label: "App" },
-  { href: "https://github.com/Nyxbid/nyxbid", label: "GitHub" },
+  { href: "https://github.com/Nyxbid/Nyxbid", label: "GitHub" },
 ];
 
 export default function MarketingLayout({
@@ -47,7 +47,7 @@ export default function MarketingLayout({
                 Docs
               </Link>
               <Link
-                href="https://github.com/Nyxbid/nyxbid"
+                href="https://github.com/Nyxbid/Nyxbid"
                 className="text-xs text-muted hover:text-foreground"
                 target="_blank"
                 rel="noopener noreferrer"
