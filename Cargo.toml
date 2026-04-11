@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "apps/coordinator",
+    "crates/consensus-core",
+    "crates/shared-types"
+]
+resolver = "2"
