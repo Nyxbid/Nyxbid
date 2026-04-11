@@ -1,12 +1,12 @@
 [package]
-name = "neurocracy"
+name = "payq"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "Payq — agentic payments on Solana"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "neurocracy"
+name = "payq"
 
 [features]
 default = []
@@ -19,10 +19,8 @@ anchor-debug = []
 custom-heap = []
 custom-panic = []
 
-
 [dependencies]
 anchor-lang = "0.32.1"
-
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

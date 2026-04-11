@@ -1,7 +1,3 @@
 [workspace]
-members = [
-    "apps/coordinator",
-    "crates/consensus-core",
-    "crates/shared-types"
-]
+members = ["apps/server", "crates/payq-types"]
 resolver = "2"

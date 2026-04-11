@@ -1,0 +1,8 @@
+[package]
+name = "payq-types"
+version = "0.1.0"
+edition = "2024"
+description = "Shared types for Payq (orchestration and clients)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

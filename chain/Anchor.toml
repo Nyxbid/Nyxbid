@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-neurocracy = "9zxiEPoEV4M4CTtjeixXhFq9Y8n8cCTCiDdkomyb5YEq"
+payq = "6PG9BxoEc5APJkWbjYMuQd8epu2pQcq96DTynYFUDtgu"
 
 [registry]
 url = "https://api.apr.dev"
