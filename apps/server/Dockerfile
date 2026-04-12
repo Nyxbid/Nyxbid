@@ -6,9 +6,14 @@ COPY apps/server apps/server
 COPY crates crates
 RUN cargo build --release -p payq-server
 
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN ARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH) && \
+    mkdir -p /export/usr/lib/${ARCH} && \
+    cp /usr/lib/${ARCH}/libssl.so.3 /export/usr/lib/${ARCH}/ && \
+    cp /usr/lib/${ARCH}/libcrypto.so.3 /export/usr/lib/${ARCH}/
+
+FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=builder /src/target/release/payq-server /usr/local/bin/payq-server
+COPY --from=builder /export/usr/lib/ /usr/lib/
 ENV RUST_LOG=info
 EXPOSE 8080
-CMD ["payq-server"]
+ENTRYPOINT ["/usr/local/bin/payq-server"]
