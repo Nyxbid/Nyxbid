@@ -49,7 +49,7 @@ async fn main() {
         .layer(cors)
         .with_state(state);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
     tracing::info!("payq-server listening on http://{addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");

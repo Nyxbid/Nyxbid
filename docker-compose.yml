@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: apps/server/Dockerfile
     ports:
-      - "3001:3001"
+      - "8080:8080"
     env_file: .env
     environment:
       - RUST_LOG=info
@@ -14,10 +14,10 @@ services:
       context: .
       dockerfile: apps/client/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:3001
+        - NEXT_PUBLIC_API_URL=http://localhost:8080
     ports:
       - "3000:3000"
     depends_on:
       - server
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_API_URL=http://localhost:8080

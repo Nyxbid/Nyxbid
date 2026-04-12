@@ -106,7 +106,7 @@ cd payq
 # Copy env template and fill in your API keys
 cp .env.example .env
 
-# Start server (port 3001) + client (port 3000)
+# Start server (port 8080) + client (port 3000)
 just dev`}
             </Code>
             <p>
@@ -114,7 +114,7 @@ just dev`}
               <InlineCode>http://localhost:3000</InlineCode> for the landing page
               and <InlineCode>http://localhost:3000/dashboard</InlineCode> for the
               dashboard. The server API is at{" "}
-              <InlineCode>http://localhost:3001</InlineCode>.
+              <InlineCode>http://localhost:8080</InlineCode>.
             </p>
             <p>
               To send a test proposal (make sure you have a{" "}
@@ -123,7 +123,7 @@ just dev`}
               <InlineCode>.env</InlineCode>):
             </p>
             <Code>
-{`curl -X POST http://localhost:3001/api/proposals \\
+{`curl -X POST http://localhost:8080/api/proposals \\
   -H "Content-Type: application/json" \\
   -d '{
     "agent_id": "agent-alpha",
@@ -140,7 +140,7 @@ just dev`}
             </p>
             <Code>
 {`apps/
-  server/        Rust / Axum API server (port 3001)
+  server/        Rust / Axum API server (port 8080)
     src/
       main.rs      Entry point, state init
       routes.rs    REST + SSE endpoints
@@ -173,7 +173,7 @@ crates/
           </Section>
 
           <Section id="api" title="API reference">
-            <p>All endpoints are served by the Rust server on port 3001.</p>
+            <p>All endpoints are served by the Rust server on port 8080.</p>
 
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-sm">
@@ -401,7 +401,7 @@ anchor program deploy --provider.cluster devnet`}
 {`# Build images
 docker compose build
 
-# Start services (server:3001, client:3000)
+# Start services (server:8080, client:3000)
 docker compose up -d
 
 # View logs

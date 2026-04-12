@@ -58,9 +58,9 @@ demo:
     @sleep 3
     @echo ""
     @echo "Sending test proposal..."
-    curl -s -X POST http://localhost:3001/api/proposals \
+    curl -s -X POST http://localhost:8080/api/proposals \
       -H "Content-Type: application/json" \
       -d '{"agent_id":"agent-alpha","tool":"groq/llama-3.3-70b-versatile","prompt":"What is Solana in one sentence?"}' | python3 -m json.tool
     @echo ""
     @echo "Dashboard stats:"
-    curl -s http://localhost:3001/api/dashboard | python3 -m json.tool
+    curl -s http://localhost:8080/api/dashboard | python3 -m json.tool

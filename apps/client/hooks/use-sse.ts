@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import type { SpendReceipt } from "@/lib/data";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export function useReceiptStream(onReceipt: (receipt: SpendReceipt) => void) {
   const callbackRef = useRef(onReceipt);
