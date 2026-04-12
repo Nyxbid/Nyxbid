@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/agents", label: "Agents" },
   { href: "/receipts", label: "Receipts" },
   { href: "/policies", label: "Policies" },
@@ -28,7 +29,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-md px-3 py-2 text-sm font-medium ${
                 active
                   ? "bg-accent/10 text-accent"
                   : "text-muted hover:bg-accent/5 hover:text-foreground"
@@ -41,7 +42,8 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border px-5 py-4">
-        <p className="text-xs text-muted">Solana Devnet</p>
+        <WalletButton />
+        <p className="mt-3 text-[10px] text-muted">Solana Devnet</p>
       </div>
     </aside>
   );

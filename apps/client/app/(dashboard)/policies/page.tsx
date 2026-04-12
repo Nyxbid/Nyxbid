@@ -1,7 +1,12 @@
-import { policies } from "@/lib/data";
+import { fetchJson } from "@/lib/api";
+import type { Policy } from "@/lib/data";
 import { formatUsdc } from "@/lib/format";
 
-export default function PoliciesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PoliciesPage() {
+  const policies = await fetchJson<Policy[]>("/api/policies");
+
   return (
     <>
       <h1 className="text-xl font-semibold tracking-tight">Policies</h1>

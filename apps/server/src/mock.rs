@@ -1,4 +1,5 @@
 use payq_types::*;
+use tokio::sync::broadcast;
 
 use crate::AppState;
 
@@ -106,6 +107,8 @@ pub fn seed() -> AppState {
                 "openai/*".into(),
                 "anthropic/*".into(),
                 "coingecko/*".into(),
+                "gemini/*".into(),
+                "groq/*".into(),
             ],
             active: true,
         },
@@ -131,9 +134,13 @@ pub fn seed() -> AppState {
         },
     ];
 
+    let (tx, _) = broadcast::channel(64);
+
     AppState {
         agents,
         receipts,
         policies,
+        solana: None,
+        tx,
     }
 }

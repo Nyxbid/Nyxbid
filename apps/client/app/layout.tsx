@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Sidebar } from "@/components/sidebar";
+import { SolanaWalletProvider } from "@/components/wallet-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Payq",
-  description: "Agentic payments on Solana",
+  description: "On-chain policy enforcement and spend receipts for autonomous AI agents on Solana.",
 };
 
 export default function RootLayout({
@@ -28,13 +28,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex h-full min-h-screen bg-background text-foreground">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10 lg:py-10">
-            {children}
-          </div>
-        </main>
+      <body className="min-h-screen bg-background text-foreground">
+        <SolanaWalletProvider>{children}</SolanaWalletProvider>
       </body>
     </html>
   );
