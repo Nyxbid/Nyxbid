@@ -3,3 +3,6 @@ target
 BRAIN.md
 
 .env
+
+.DS_Store
+*/.DS_Store
