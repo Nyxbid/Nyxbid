@@ -1,7 +1,9 @@
-mod mock;
+mod auction;
+mod intent;
+mod mcp;
 mod routes;
-pub mod solana;
-mod x402;
+mod solana;
+mod state;
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -10,34 +12,24 @@ use tokio::sync::{broadcast, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
-pub struct AppState {
-    pub agents: Vec<payq_types::Agent>,
-    pub receipts: Vec<payq_types::SpendReceipt>,
-    pub policies: Vec<payq_types::Policy>,
-    pub solana: Option<solana::SolanaClient>,
-    pub tx: broadcast::Sender<payq_types::SpendReceipt>,
-}
-
-pub type SharedState = Arc<RwLock<AppState>>;
+use crate::state::{AppState, SharedState, StreamEvent};
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive("info".parse().unwrap()),
+        )
         .init();
 
     let sol = solana::SolanaClient::from_env();
     if sol.is_none() {
-        tracing::warn!("solana client not configured — on-chain recording disabled");
+        tracing::warn!("solana client not configured — settlement broadcast disabled");
     }
 
-    let (tx, _) = broadcast::channel::<payq_types::SpendReceipt>(64);
+    let (tx, _) = broadcast::channel::<StreamEvent>(128);
 
-    let state: SharedState = Arc::new(RwLock::new(AppState {
-        solana: sol,
-        tx,
-        ..mock::seed()
-    }));
+    let state: SharedState = Arc::new(RwLock::new(AppState::seed(sol, tx)));
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -50,7 +42,7 @@ async fn main() {
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    tracing::info!("payq-server listening on http://{addr}");
+    tracing::info!("nyxbid-server listening on http://{addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");
     axum::serve(listener, app).await.expect("serve");
