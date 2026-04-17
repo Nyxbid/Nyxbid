@@ -1,6 +1,14 @@
 import Link from "next/link";
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section id={id} className="scroll-mt-20">
       <h2 className="text-xl font-bold tracking-tight">{title}</h2>
@@ -28,13 +36,14 @@ function InlineCode({ children }: { children: React.ReactNode }) {
 }
 
 const tocItems = [
+  { id: "overview", label: "Overview" },
   { id: "prerequisites", label: "Prerequisites" },
   { id: "quickstart", label: "Quick start" },
-  { id: "architecture", label: "Architecture" },
+  { id: "flow", label: "Intent flow" },
   { id: "api", label: "API reference" },
-  { id: "smart-contract", label: "Smart contract" },
+  { id: "mcp", label: "MCP tools" },
+  { id: "program", label: "Anchor program" },
   { id: "config", label: "Configuration" },
-  { id: "docker", label: "Docker" },
 ];
 
 export default function DocsPage() {
@@ -42,8 +51,7 @@ export default function DocsPage() {
     <div className="mx-auto max-w-5xl px-6 py-16">
       <h1 className="text-3xl font-bold tracking-tight">Documentation</h1>
       <p className="mt-2 text-sm text-muted">
-        Everything you need to run Payq locally, deploy to devnet, and integrate
-        agents.
+        Run Nyxbid locally, deploy to devnet, and wire up agents via MCP.
       </p>
 
       <div className="mt-12 flex gap-16">
@@ -65,116 +73,59 @@ export default function DocsPage() {
         </nav>
 
         <div className="min-w-0 flex-1 space-y-16">
-          <Section id="prerequisites" title="Prerequisites">
-            <p>You need the following installed before starting.</p>
-            <Code>
-{`# Rust toolchain
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Bun (JS runtime)
-curl -fsSL https://bun.sh/install | bash
-
-# Solana CLI 3.x
-sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
-
-# Anchor CLI 1.0
-cargo install --git https://github.com/coral-xyz/anchor anchor-cli
-
-# Just (task runner)
-cargo install just`}
-            </Code>
+          <Section id="overview" title="Overview">
             <p>
-              After installing Solana CLI, create a devnet keypair if you
-              don&apos;t have one:
+              Nyxbid is a sealed-bid RFQ venue for OTC-size trades on Solana.
+              Takers post intents, makers submit sealed price commitments, and
+              the winning quote settles atomically via HTLC-style escrow on
+              chain. All tools are exposed over the Model Context Protocol so
+              agents can trade natively.
             </p>
+          </Section>
+
+          <Section id="prerequisites" title="Prerequisites">
             <Code>
-{`solana-keygen new --outfile ~/.config/solana/id.json
-solana config set --url devnet
-solana airdrop 2`}
+{`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl -fsSL https://bun.sh/install | bash
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+cargo install --git https://github.com/coral-xyz/anchor anchor-cli
+cargo install just`}
             </Code>
           </Section>
 
           <Section id="quickstart" title="Quick start">
-            <p>
-              Clone the repo and start both the server and client with a single
-              command.
-            </p>
             <Code>
-{`git clone https://github.com/neurocracy/payq.git
-cd payq
-
-# Copy env template and fill in your API keys
+{`git clone https://github.com/Nyxbid/nyxbid.git
+cd nyxbid
 cp .env.example .env
-
-# Start server (port 8080) + client (port 3000)
 just dev`}
             </Code>
             <p>
-              Open{" "}
-              <InlineCode>http://localhost:3000</InlineCode> for the landing page
-              and <InlineCode>http://localhost:3000/dashboard</InlineCode> for the
-              dashboard. The server API is at{" "}
+              App at <InlineCode>http://localhost:3000</InlineCode>, API at{" "}
               <InlineCode>http://localhost:8080</InlineCode>.
             </p>
-            <p>
-              To send a test proposal (make sure you have a{" "}
-              <InlineCode>GEMINI_API_KEY</InlineCode> or{" "}
-              <InlineCode>GROQ_API_KEY</InlineCode> in your{" "}
-              <InlineCode>.env</InlineCode>):
-            </p>
-            <Code>
-{`curl -X POST http://localhost:8080/api/proposals \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "agent_id": "agent-alpha",
-    "tool": "gemini/gemini-2.0-flash",
-    "prompt": "What is Solana?"
-  }'`}
-            </Code>
           </Section>
 
-          <Section id="architecture" title="Architecture">
-            <p>
-              Payq has three layers: a Rust API server, a Next.js dashboard, and
-              an Anchor program on Solana.
-            </p>
+          <Section id="flow" title="Intent flow">
             <Code>
-{`apps/
-  server/        Rust / Axum API server (port 8080)
-    src/
-      main.rs      Entry point, state init
-      routes.rs    REST + SSE endpoints
-      x402.rs      Tool routing (Gemini, Groq, OpenAI)
-      solana.rs    On-chain transaction builder
-      mock.rs      Seed data for dev
+{`1. Taker calls POST /api/intents
+   { side, base_mint, quote_mint, size, limit_price }
+   Server stores Intent, broadcasts IntentCreated over SSE.
 
-  client/        Next.js dashboard (port 3000)
-    app/
-      (marketing)/ Landing page + docs
-      (dashboard)/ Sidebar layout + app pages
+2. Each maker computes commitment = H(price || size || nonce)
+   and calls the Anchor program submit_quote instruction.
 
-chain/
-  programs/payq/ Anchor program
-    src/
-      lib.rs             Program entry
-      state.rs           Vault + SpendRecord accounts
-      errors.rs          Custom errors
-      events.rs          Anchor events
-      instructions/      One file per instruction
+3. After reveal_deadline, makers reveal (price, size, nonce).
+   Program verifies commitment, picks winner that clears limit.
 
-crates/
-  payq-types/    Shared Rust types (Agent, Policy, Receipt)`}
+4. Settle in a single tx:
+   - taker's quote-mint -> maker
+   - maker's base-mint  -> taker
+   - receipt PDA is written with (price, size, timestamp).`}
             </Code>
-            <p>
-              The server is the orchestrator. Agents send proposals via HTTP. The
-              server checks policy, calls the tool, creates a receipt, optionally
-              writes it on-chain, and broadcasts it to the dashboard via SSE.
-            </p>
           </Section>
 
           <Section id="api" title="API reference">
-            <p>All endpoints are served by the Rust server on port 8080.</p>
-
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -193,16 +144,18 @@ crates/
                 <tbody>
                   {[
                     ["GET", "/health", "Server version and status"],
-                    ["GET", "/api/dashboard", "Stats + recent receipts"],
-                    ["GET", "/api/agents", "List all agents"],
-                    ["GET", "/api/receipts", "List all spend receipts"],
-                    ["GET", "/api/policies", "List all policies"],
+                    ["GET", "/api/dashboard", "Aggregate stats"],
+                    ["GET", "/api/markets", "List supported markets"],
+                    ["GET", "/api/intents", "List intents"],
+                    ["POST", "/api/intents", "Create a new intent"],
+                    ["GET", "/api/intents/:id", "Get a single intent"],
                     [
-                      "POST",
-                      "/api/proposals",
-                      "Submit a tool request from an agent",
+                      "GET",
+                      "/api/intents/:id/quotes",
+                      "Quotes attached to an intent",
                     ],
-                    ["GET", "/api/events", "SSE stream of new receipts"],
+                    ["GET", "/api/fills", "List settled fills"],
+                    ["GET", "/api/events", "SSE stream of lifecycle events"],
                   ].map(([method, path, desc]) => (
                     <tr
                       key={path}
@@ -218,211 +171,47 @@ crates/
                 </tbody>
               </table>
             </div>
+          </Section>
 
-            <p className="mt-2 font-medium text-foreground">
-              POST /api/proposals
+          <Section id="mcp" title="MCP tools">
+            <p>
+              The server exposes the trading lifecycle as Model Context Protocol
+              tools for AI agents.
             </p>
             <Code>
-{`// Request body
-{
-  "agent_id": "agent-alpha",
-  "tool": "gemini/gemini-2.0-flash",
-  "prompt": "Explain Solana accounts"
-}
-
-// Response
-{
-  "receipt": {
-    "id": "rcpt-a1b2c3d4",
-    "agent_id": "agent-alpha",
-    "agent_name": "Alpha",
-    "tool": "gemini/gemini-2.0-flash",
-    "amount": 150,
-    "tx_hash": "5xK9...",
-    "status": "confirmed",
-    "timestamp": "2026-04-12T10:00:00Z",
-    "proposal_hash": "abc123..."
-  },
-  "tool_response": "Solana accounts are..."
-}`}
+{`nyxbid.list_markets      () -> Market[]
+nyxbid.create_intent     (symbol, side, size, limit) -> Intent
+nyxbid.list_quotes       (intent_id) -> Quote[]
+nyxbid.get_receipt       (intent_id) -> Fill?
+nyxbid.cancel_intent     (intent_id) -> Intent`}
             </Code>
           </Section>
 
-          <Section id="smart-contract" title="Smart contract">
-            <p>
-              The Anchor program manages Vault accounts and SpendRecord PDAs.
-            </p>
-
-            <p className="font-medium text-foreground">Instructions</p>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-card">
-                    <th className="px-4 py-3 font-medium text-foreground">
-                      Instruction
-                    </th>
-                    <th className="px-4 py-3 font-medium text-foreground">
-                      Signer
-                    </th>
-                    <th className="px-4 py-3 font-medium text-foreground">
-                      What it does
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    [
-                      "initialize_vault",
-                      "authority",
-                      "Creates a Vault PDA with spend limits and a delegate key",
-                    ],
-                    [
-                      "update_vault",
-                      "authority",
-                      "Updates limits, delegate, or pause status",
-                    ],
-                    [
-                      "close_vault",
-                      "authority",
-                      "Closes the Vault, reclaims rent",
-                    ],
-                    [
-                      "record_spend",
-                      "delegate",
-                      "Creates a SpendRecord PDA, updates daily counters",
-                    ],
-                  ].map(([instr, signer, desc]) => (
-                    <tr
-                      key={instr}
-                      className="border-b border-border last:border-0"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs">{instr}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-accent">
-                        {signer}
-                      </td>
-                      <td className="px-4 py-3">{desc}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="mt-4">
-              Build and deploy to devnet:
-            </p>
+          <Section id="program" title="Anchor program">
             <Code>
-{`cd chain
-anchor build
-anchor program deploy --provider.cluster devnet`}
+{`create_intent     taker signs   -> Intent PDA
+submit_quote      maker signs   -> Quote PDA (commitment)
+resolve_auction   any signer    -> reveal, pick winner
+settle            any signer    -> atomic swap + Receipt PDA
+cancel            taker signs   -> close open intent`}
             </Code>
           </Section>
 
           <Section id="config" title="Configuration">
-            <p>
-              Copy <InlineCode>.env.example</InlineCode> to{" "}
-              <InlineCode>.env</InlineCode> and fill in values.
-            </p>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-card">
-                    <th className="px-4 py-3 font-medium text-foreground">
-                      Variable
-                    </th>
-                    <th className="px-4 py-3 font-medium text-foreground">
-                      Required
-                    </th>
-                    <th className="px-4 py-3 font-medium text-foreground">
-                      Description
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    [
-                      "SOLANA_RPC_URL",
-                      "No",
-                      "Defaults to devnet",
-                    ],
-                    [
-                      "SOLANA_KEYPAIR_PATH",
-                      "No",
-                      "Path to delegate keypair for on-chain recording",
-                    ],
-                    [
-                      "PAYQ_PROGRAM_ID",
-                      "No",
-                      "Deployed program address",
-                    ],
-                    [
-                      "PAYQ_VAULT_PUBKEY",
-                      "No",
-                      "Vault PDA to record spends against",
-                    ],
-                    [
-                      "GEMINI_API_KEY",
-                      "Yes*",
-                      "For gemini/* tools",
-                    ],
-                    [
-                      "GROQ_API_KEY",
-                      "Yes*",
-                      "For groq/* tools",
-                    ],
-                    [
-                      "OPENAI_API_KEY",
-                      "Yes*",
-                      "For openai/* tools",
-                    ],
-                  ].map(([name, req, desc]) => (
-                    <tr
-                      key={name}
-                      className="border-b border-border last:border-0"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs">{name}</td>
-                      <td className="px-4 py-3 text-xs">{req}</td>
-                      <td className="px-4 py-3">{desc}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs">
-              *At least one LLM key is needed to use LLM tools. Simulated tools
-              (coingecko/*, pyth/*, helius/*) work without keys.
-            </p>
-          </Section>
-
-          <Section id="docker" title="Docker">
-            <p>
-              Build and run both services with Docker Compose.
-            </p>
             <Code>
-{`# Build images
-docker compose build
-
-# Start services (server:8080, client:3000)
-docker compose up -d
-
-# View logs
-docker compose logs -f
-
-# Stop
-docker compose down`}
+{`SOLANA_RPC_URL=https://api.devnet.solana.com
+SOLANA_KEYPAIR_PATH=~/.config/solana/id.json
+NYXBID_PROGRAM_ID=NYXBiDzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+NYXBID_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+RUST_LOG=info`}
             </Code>
-            <p>
-              Or use the Justfile shortcuts:{" "}
-              <InlineCode>just docker-build</InlineCode>,{" "}
-              <InlineCode>just docker-up</InlineCode>,{" "}
-              <InlineCode>just docker-down</InlineCode>.
-            </p>
           </Section>
 
           <div className="rounded-lg border border-border bg-card px-6 py-5">
             <p className="text-sm text-muted">
               Need help?{" "}
               <Link
-                href="https://github.com/neurocracy/payq/issues"
+                href="https://github.com/Nyxbid/nyxbid/issues"
                 className="text-accent hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
