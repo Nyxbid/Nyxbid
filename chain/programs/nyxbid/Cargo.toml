@@ -1,12 +1,12 @@
 [package]
-name = "payq"
+name = "nyxbid"
 version = "0.1.0"
-description = "Payq — agentic payments on Solana"
+description = "Nyxbid: sealed-bid RFQ venue on Solana"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "payq"
+name = "nyxbid"
 
 [features]
 default = []
@@ -21,6 +21,14 @@ custom-panic = []
 
 [dependencies]
 anchor-lang = "1.0.0"
+solana-sha256-hasher = "3.1.0"
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+
+[lints]
+workspace = true
