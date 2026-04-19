@@ -2,7 +2,7 @@ default:
     @just --list
 
 dev-server:
-    cargo run -p payq-server
+    cargo run -p nyxbid-server
 
 dev-client:
     cd apps/client && bun dev
@@ -12,7 +12,7 @@ dev:
     just dev-client
 
 build-server:
-    cargo build --release -p payq-server
+    cargo build --release -p nyxbid-server
 
 build-client:
     cd apps/client && bun run build
@@ -26,7 +26,7 @@ test-chain:
     cd chain && anchor test
 
 deploy-devnet:
-    cd chain && anchor program deploy --provider.cluster devnet
+    cd chain && anchor deploy --provider.cluster devnet
 
 docker-build:
     docker compose build
@@ -50,17 +50,4 @@ fmt:
 clean:
     cargo clean
     cd apps/client && rm -rf .next
-    cd chain && rm -rf target
-
-demo:
-    @echo "Starting server in background..."
-    just dev-server &
-    @sleep 3
-    @echo ""
-    @echo "Sending test proposal..."
-    curl -s -X POST http://localhost:8080/api/proposals \
-      -H "Content-Type: application/json" \
-      -d '{"agent_id":"agent-alpha","tool":"groq/llama-3.3-70b-versatile","prompt":"What is Solana in one sentence?"}' | python3 -m json.tool
-    @echo ""
-    @echo "Dashboard stats:"
-    curl -s http://localhost:8080/api/dashboard | python3 -m json.tool
+    cd chain && rm -rf target .anchor
