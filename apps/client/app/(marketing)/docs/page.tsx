@@ -95,7 +95,7 @@ cargo install just`}
 
           <Section id="quickstart" title="Quick start">
             <Code>
-{`git clone https://github.com/Nyxbid/nyxbid.git
+{`git clone https://github.com/Nyxbid/Nyxbid.git
 cd nyxbid
 cp .env.example .env
 just dev`}
@@ -211,7 +211,7 @@ RUST_LOG=info`}
             <p className="text-sm text-muted">
               Need help?{" "}
               <Link
-                href="https://github.com/Nyxbid/nyxbid/issues"
+                href="https://github.com/Nyxbid/Nyxbid/issues"
                 className="text-accent hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"

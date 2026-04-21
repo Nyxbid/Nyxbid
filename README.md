@@ -3,8 +3,6 @@
 Private, sealed-bid RFQ venue for OTC-size trades on Solana. Atomic
 settlement on chain. Agent-native via the Model Context Protocol.
 
-- Spec: [`PROJECT.md`](./PROJECT.md)
-- Checklist: [`PROGRESS.md`](./PROGRESS.md)
 - Deploy notes: [`deploy/README.md`](./deploy/README.md)
 
 ## Quick start
@@ -12,8 +10,8 @@ settlement on chain. Agent-native via the Model Context Protocol.
 Prerequisites: Rust, Bun, Solana CLI, Anchor 1.0, Just.
 
 ```
-git clone https://github.com/Nyxbid/nyxbid.git
-cd nyxbid
+git clone https://github.com/Nyxbid/Nyxbid.git
+cd Nyxbid
 cp .env.example .env
 just dev
 ```
