@@ -158,7 +158,7 @@ just dev`}
                     ["GET", "/api/events", "SSE stream of lifecycle events"],
                   ].map(([method, path, desc]) => (
                     <tr
-                      key={path}
+                      key={`${method}-${path}`}
                       className="border-b border-border last:border-0"
                     >
                       <td className="px-4 py-3 font-mono text-xs text-accent">
