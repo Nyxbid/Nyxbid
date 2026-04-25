@@ -20,8 +20,8 @@ pub fn router() -> Router<SharedState> {
         .route("/api/dashboard", get(dashboard))
         .route("/api/markets", get(list_markets))
         .route("/api/intents", get(list_intents).post(create_intent))
-        .route("/api/intents/:id", get(get_intent))
-        .route("/api/intents/:id/quotes", get(list_quotes_for_intent))
+        .route("/api/intents/{id}", get(get_intent))
+        .route("/api/intents/{id}/quotes", get(list_quotes_for_intent))
         .route("/api/fills", get(list_fills))
         .route("/api/events", get(events))
 }
