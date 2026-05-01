@@ -41,7 +41,7 @@ const tocItems = [
   { id: "quickstart", label: "Quick start" },
   { id: "flow", label: "Intent flow" },
   { id: "api", label: "API reference" },
-  { id: "mcp", label: "MCP tools" },
+  { id: "agents", label: "Agent integration" },
   { id: "program", label: "Anchor program" },
   { id: "config", label: "Configuration" },
 ];
@@ -51,7 +51,7 @@ export default function DocsPage() {
     <div className="mx-auto max-w-5xl px-6 py-16">
       <h1 className="text-3xl font-bold tracking-tight">Documentation</h1>
       <p className="mt-2 text-sm text-muted">
-        Run Nyxbid locally, deploy to devnet, and wire up agents via MCP.
+        Run Nyxbid locally, deploy to devnet, and wire up agents via A2A and gRPC.
       </p>
 
       <div className="mt-12 flex gap-16">
@@ -78,8 +78,8 @@ export default function DocsPage() {
               Nyxbid is a sealed-bid RFQ venue for OTC-size trades on Solana.
               Takers post intents, makers submit sealed price commitments, and
               the winning quote settles atomically via HTLC-style escrow on
-              chain. All tools are exposed over the Model Context Protocol so
-              agents can trade natively.
+              chain. Settlement is Solana-native, agent identity rides on A2A,
+              and professional makers consume a low-latency gRPC event stream.
             </p>
           </Section>
 
@@ -173,17 +173,20 @@ just dev`}
             </div>
           </Section>
 
-          <Section id="mcp" title="MCP tools">
+          <Section id="agents" title="Agent integration">
             <p>
-              The server exposes the trading lifecycle as Model Context Protocol
-              tools for AI agents.
+              Money movement is signed by the user or agent wallet directly
+              against the Anchor program — never by the server. Agent identity
+              and negotiation use A2A, while professional makers stream events
+              over gRPC instead of polling REST.
             </p>
             <Code>
-{`nyxbid.list_markets      () -> Market[]
-nyxbid.create_intent     (symbol, side, size, limit) -> Intent
-nyxbid.list_quotes       (intent_id) -> Quote[]
-nyxbid.get_receipt       (intent_id) -> Fill?
-nyxbid.cancel_intent     (intent_id) -> Intent`}
+{`A2A     /.well-known/agent.json    Nyxbid agent card
+A2A     POST /a2a/tasks             signed task messages (JWS)
+gRPC    StreamEvents                IntentCreated, QuoteSubmitted,
+                                    AuctionResolved, Settled, Cancelled
+REST    POST /api/intents/build     unsigned create_intent transaction
+REST    POST /api/quotes/build      unsigned submit_quote transaction`}
             </Code>
           </Section>
 
@@ -201,7 +204,7 @@ cancel            taker signs   -> close open intent`}
             <Code>
 {`SOLANA_RPC_URL=https://api.devnet.solana.com
 SOLANA_KEYPAIR_PATH=~/.config/solana/id.json
-NYXBID_PROGRAM_ID=NYXBiDzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+NYXBID_PROGRAM_ID=E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2
 NYXBID_USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 RUST_LOG=info`}
             </Code>

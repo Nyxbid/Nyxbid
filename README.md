@@ -1,9 +1,19 @@
 # Nyxbid
 
 Private, sealed-bid RFQ venue for OTC-size trades on Solana. Atomic
-settlement on chain. Agent-native via the Model Context Protocol.
+settlement on chain. Agent-native via A2A and gRPC.
 
 - Deploy notes: [`deploy/README.md`](./deploy/README.md)
+
+## Architecture
+
+- **Solana** — signed transactions for writes and atomic settlement.
+- **A2A** — agent identity, task negotiation, signed quote metadata.
+- **gRPC** — low-latency event stream for professional makers.
+- **REST / WebSocket** — web app and standard integrations.
+
+The server coordinates the off-chain experience but never custodies funds
+or signs user transactions. Money movement belongs to Solana.
 
 ## Quick start
 

@@ -5,11 +5,11 @@ package_manager = "bun"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-nyxbid = "nyxkGtm8x7GMdTWKyy5TKa72pgsebrECrchPDuRSrEQ"
-
 [programs.devnet]
-nyxbid = "nyxkGtm8x7GMdTWKyy5TKa72pgsebrECrchPDuRSrEQ"
+nyxbid = "E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2"
+
+[programs.localnet]
+nyxbid = "E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2"
 
 [provider]
 cluster = "devnet"
@@ -17,3 +17,5 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "cargo test"
+
+[hooks]
