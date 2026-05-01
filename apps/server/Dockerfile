@@ -1,6 +1,10 @@
-FROM rust:1.86-slim AS builder
+FROM rust:1.89-slim AS builder
 WORKDIR /src
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    dpkg-dev \
+ && rm -rf /var/lib/apt/lists/*
 COPY Cargo.toml Cargo.lock* ./
 COPY apps/server apps/server
 COPY crates crates

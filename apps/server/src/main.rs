@@ -1,6 +1,5 @@
 mod auction;
 mod intent;
-mod mcp;
 mod routes;
 mod solana;
 mod state;
