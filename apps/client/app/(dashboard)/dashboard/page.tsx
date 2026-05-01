@@ -41,7 +41,7 @@ export default async function Dashboard() {
           Recent activity
         </h2>
         <div className="mt-3 rounded-lg border border-border bg-card px-5 py-8 text-center text-sm text-muted">
-          No fills yet. Submit an intent via the API or MCP to get started.
+          No fills yet. Submit an intent via the API or an A2A agent to get started.
         </div>
       </section>
     </>

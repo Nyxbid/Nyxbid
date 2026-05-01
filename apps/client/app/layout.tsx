@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Nyxbid — sealed-bid OTC for Solana",
   description:
-    "Private RFQ venue for OTC-size trades on Solana. Sealed bids, atomic settlement, agent-native via MCP.",
+    "Private RFQ venue for OTC-size trades on Solana. Sealed bids, atomic settlement, agent-native via A2A.",
 };
 
 export default function RootLayout({

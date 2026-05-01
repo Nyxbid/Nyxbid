@@ -23,9 +23,9 @@ const features = [
     ),
   },
   {
-    title: "Agent-native via MCP",
+    title: "Agent-native via A2A",
     description:
-      "The full intent lifecycle is exposed as Model Context Protocol tools. AI agents quote, auction and settle without glue code.",
+      "Maker and taker agents are first-class participants. Signed A2A task messages bind agent identity to on-chain quotes and settlement.",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3" />
@@ -70,7 +70,7 @@ export default function LandingPage() {
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
           Nyxbid is a private venue for OTC-size trades on Solana. Sealed bids,
-          atomic settlement, agent-native via MCP.
+          atomic settlement, agent-native via A2A.
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link
@@ -140,10 +140,11 @@ export default function LandingPage() {
       │    nyxbid-server       │ ───────────────►
       │    (Rust / Axum)       │
       │                        │
-      │  intent  auction  mcp  │ ◀── MCP tools ── AI maker/taker agents
+      │  intent  auction  a2a  │ ◀── gRPC stream ─ Maker bots
+      │                        │ ◀── A2A tasks ─── Taker / maker agents
       └────────────────────────┘
                    ▲
-                   │ SSE
+                   │ WebSocket
               nyxbid-client (Next.js)`}
             </pre>
           </div>
