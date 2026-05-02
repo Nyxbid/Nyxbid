@@ -27,6 +27,13 @@ pub mod nyxbid {
         instructions::submit_quote::handler(ctx, params)
     }
 
+    pub fn fund_maker_escrow(
+        ctx: Context<FundMakerEscrow>,
+        params: FundMakerEscrowParams,
+    ) -> Result<()> {
+        instructions::fund_maker_escrow::handler(ctx, params)
+    }
+
     pub fn resolve_auction(
         ctx: Context<ResolveAuction>,
         params: ResolveAuctionParams,
