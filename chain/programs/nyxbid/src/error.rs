@@ -8,6 +8,8 @@ pub enum NyxbidError {
     IntentNotResolved,
     #[msg("reveal deadline has not passed")]
     RevealDeadlineNotReached,
+    #[msg("reveal deadline has passed")]
+    RevealDeadlinePassed,
     #[msg("resolve deadline has not passed")]
     ResolveDeadlineNotReached,
     #[msg("resolve deadline has passed")]
