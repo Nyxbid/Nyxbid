@@ -4,7 +4,8 @@ use anchor_spl::token::{self, CloseAccount, Token, TokenAccount, Transfer};
 use crate::error::NyxbidError;
 use crate::events::Cancelled;
 use crate::state::{
-    Escrow, Intent, IntentStatus, ESCROW_SEED, MAKER_VAULT_SEED, TAKER_VAULT_SEED,
+    Escrow, Intent, IntentStatus, Reputation, ESCROW_SEED, MAKER_VAULT_SEED, REPUTATION_SEED,
+    TAKER_VAULT_SEED,
 };
 
 /// Permissionless expiry. Anyone can call this after resolve_deadline
@@ -85,6 +86,14 @@ pub struct Expire<'info> {
     )]
     pub maker_rent_beneficiary: UncheckedAccount<'info>,
 
+    #[account(
+        mut,
+        seeds = [REPUTATION_SEED, escrow.maker.as_ref()],
+        bump = reputation.bump,
+        constraint = reputation.maker == escrow.maker @ NyxbidError::Unauthorized,
+    )]
+    pub reputation: Account<'info, Reputation>,
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -157,6 +166,10 @@ pub(crate) fn handler(ctx: Context<Expire>) -> Result<()> {
 
     let intent = &mut ctx.accounts.intent;
     intent.status = IntentStatus::Expired as u8;
+
+    // The maker funded but never revealed in time. Count as a failed reveal.
+    let rep = &mut ctx.accounts.reputation;
+    rep.failed_reveals = rep.failed_reveals.saturating_add(1);
 
     emit!(Cancelled {
         intent: intent.key(),

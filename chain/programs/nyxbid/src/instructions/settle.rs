@@ -4,8 +4,8 @@ use anchor_spl::token::{self, CloseAccount, Mint, Token, TokenAccount, Transfer}
 use crate::error::NyxbidError;
 use crate::events::Settled;
 use crate::state::{
-    Escrow, Intent, IntentStatus, Quote, Receipt, ESCROW_SEED, MAKER_VAULT_SEED, RECEIPT_SEED,
-    TAKER_VAULT_SEED,
+    Escrow, Intent, IntentStatus, Quote, Receipt, Reputation, ESCROW_SEED, MAKER_VAULT_SEED,
+    RECEIPT_SEED, REPUTATION_SEED, TAKER_VAULT_SEED,
 };
 
 #[derive(Accounts)]
@@ -85,6 +85,14 @@ pub struct Settle<'info> {
         bump
     )]
     pub receipt: Account<'info, Receipt>,
+
+    #[account(
+        mut,
+        seeds = [REPUTATION_SEED, winning_quote.maker.as_ref()],
+        bump = reputation.bump,
+        constraint = reputation.maker == winning_quote.maker @ NyxbidError::Unauthorized,
+    )]
+    pub reputation: Account<'info, Reputation>,
 
     /// Sanity-check the mints are still the same as recorded.
     #[account(constraint = base_mint.key() == intent.base_mint @ NyxbidError::WrongLockMint)]
@@ -168,6 +176,9 @@ pub(crate) fn handler(ctx: Context<Settle>) -> Result<()> {
     receipt.bump = ctx.bumps.receipt;
 
     intent.status = IntentStatus::Settled as u8;
+
+    let rep = &mut ctx.accounts.reputation;
+    rep.settled_count = rep.settled_count.saturating_add(1);
 
     emit!(Settled {
         intent: intent.key(),

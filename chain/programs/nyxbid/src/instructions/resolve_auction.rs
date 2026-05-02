@@ -4,7 +4,8 @@ use solana_sha256_hasher::hashv;
 use crate::error::NyxbidError;
 use crate::events::AuctionResolved;
 use crate::state::{
-    quote_notional, Escrow, Intent, IntentStatus, Quote, Side, ESCROW_SEED,
+    quote_notional, Escrow, Intent, IntentStatus, Quote, Reputation, Side, ESCROW_SEED,
+    REPUTATION_SEED,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -39,6 +40,14 @@ pub struct ResolveAuction<'info> {
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
     )]
     pub escrow: Account<'info, Escrow>,
+
+    #[account(
+        mut,
+        seeds = [REPUTATION_SEED, winning_quote.maker.as_ref()],
+        bump = reputation.bump,
+        constraint = reputation.maker == winning_quote.maker @ NyxbidError::Unauthorized,
+    )]
+    pub reputation: Account<'info, Reputation>,
 }
 
 pub(crate) fn handler(ctx: Context<ResolveAuction>, params: ResolveAuctionParams) -> Result<()> {
@@ -110,6 +119,9 @@ pub(crate) fn handler(ctx: Context<ResolveAuction>, params: ResolveAuctionParams
 
     intent.status = IntentStatus::Resolved as u8;
     intent.winning_quote = quote.key();
+
+    let rep = &mut ctx.accounts.reputation;
+    rep.quotes_won = rep.quotes_won.saturating_add(1);
 
     emit!(AuctionResolved {
         intent: intent.key(),

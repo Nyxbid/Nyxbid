@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::error::NyxbidError;
 use crate::events::QuoteSubmitted;
-use crate::state::{Intent, IntentStatus, Quote, QUOTE_SEED};
+use crate::state::{Intent, IntentStatus, Quote, Reputation, QUOTE_SEED, REPUTATION_SEED};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct SubmitQuoteParams {
@@ -31,10 +31,26 @@ pub struct SubmitQuote<'info> {
     )]
     pub quote: Account<'info, Quote>,
 
+    /// Per-maker reputation. Created the first time a maker submits a quote.
+    #[account(
+        init_if_needed,
+        payer = maker,
+        space = 8 + Reputation::INIT_SPACE,
+        seeds = [REPUTATION_SEED, maker.key().as_ref()],
+        bump
+    )]
+    pub reputation: Account<'info, Reputation>,
+
     pub system_program: Program<'info, System>,
 }
 
 pub(crate) fn handler(ctx: Context<SubmitQuote>, params: SubmitQuoteParams) -> Result<()> {
+    let clock = Clock::get()?;
+    require!(
+        clock.unix_timestamp < ctx.accounts.intent.reveal_deadline,
+        NyxbidError::RevealDeadlinePassed
+    );
+
     let quote = &mut ctx.accounts.quote;
     quote.intent = ctx.accounts.intent.key();
     quote.maker = ctx.accounts.maker.key();
@@ -45,6 +61,14 @@ pub(crate) fn handler(ctx: Context<SubmitQuote>, params: SubmitQuoteParams) -> R
     quote.revealed = false;
     quote.maker_funded = false;
     quote.bump = ctx.bumps.quote;
+
+    let rep = &mut ctx.accounts.reputation;
+    if rep.maker == Pubkey::default() {
+        // Freshly initialized.
+        rep.maker = ctx.accounts.maker.key();
+        rep.bump = ctx.bumps.reputation;
+    }
+    rep.quotes_submitted = rep.quotes_submitted.saturating_add(1);
 
     emit!(QuoteSubmitted {
         intent: quote.intent,
