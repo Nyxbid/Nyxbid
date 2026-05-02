@@ -48,4 +48,8 @@ pub mod nyxbid {
     pub fn cancel(ctx: Context<Cancel>) -> Result<()> {
         instructions::cancel::handler(ctx)
     }
+
+    pub fn expire(ctx: Context<Expire>) -> Result<()> {
+        instructions::expire::handler(ctx)
+    }
 }
