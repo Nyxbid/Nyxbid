@@ -3,9 +3,18 @@ use anchor_lang::prelude::*;
 pub const INTENT_SEED: &[u8] = b"intent";
 pub const QUOTE_SEED: &[u8] = b"quote";
 pub const ESCROW_SEED: &[u8] = b"escrow";
+pub const TAKER_VAULT_SEED: &[u8] = b"taker_vault";
+pub const MAKER_VAULT_SEED: &[u8] = b"maker_vault";
 pub const RECEIPT_SEED: &[u8] = b"receipt";
+pub const REPUTATION_SEED: &[u8] = b"reputation";
+
+/// Fixed-point scale for `limit_price` and `revealed_price`.
+/// A price of 1.0 quote per base is encoded as `PRICE_SCALE`.
+/// `quote_amount = size * price / PRICE_SCALE` (computed in u128).
+pub const PRICE_SCALE: u64 = 1_000_000;
 
 #[account]
+#[derive(InitSpace)]
 pub struct Intent {
     pub taker: Pubkey,
     pub side: u8,
@@ -18,14 +27,13 @@ pub struct Intent {
     pub commitment_root: [u8; 32],
     pub status: u8,
     pub winning_quote: Pubkey,
+    /// Cached PDA bumps for cheap signer-seeds derivation later.
     pub bump: u8,
-}
-
-impl Intent {
-    pub const LEN: usize = 8 + 32 + 1 + 32 + 32 + 8 + 8 + 8 + 8 + 32 + 1 + 32 + 1;
+    pub escrow_bump: u8,
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct Quote {
     pub intent: Pubkey,
     pub maker: Pubkey,
@@ -34,28 +42,29 @@ pub struct Quote {
     pub revealed_size: u64,
     pub nonce: [u8; 32],
     pub revealed: bool,
+    pub maker_funded: bool,
     pub bump: u8,
 }
 
-impl Quote {
-    pub const LEN: usize = 8 + 32 + 32 + 32 + 8 + 8 + 32 + 1 + 1;
-}
-
+/// Per-intent escrow record. Owns two vault token accounts:
+///   - taker_vault: holds the leg the taker locked at create_intent.
+///   - maker_vault: holds the leg the winning maker locked before reveal.
+/// Settle drains both vaults atomically and closes them.
 #[account]
+#[derive(InitSpace)]
 pub struct Escrow {
     pub intent: Pubkey,
-    pub taker_deposit: u64,
+    pub taker_amount: u64,
+    pub taker_mint: Pubkey,
     pub maker: Pubkey,
-    pub maker_deposit: u64,
+    pub maker_amount: u64,
+    pub maker_mint: Pubkey,
     pub settled: bool,
     pub bump: u8,
 }
 
-impl Escrow {
-    pub const LEN: usize = 8 + 32 + 8 + 32 + 8 + 1 + 1;
-}
-
 #[account]
+#[derive(InitSpace)]
 pub struct Receipt {
     pub intent: Pubkey,
     pub taker: Pubkey,
@@ -68,11 +77,21 @@ pub struct Receipt {
     pub bump: u8,
 }
 
-impl Receipt {
-    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 1;
+/// Per-maker reputation. Phase 1 stores raw counters only.
+/// Phase 3 will map A2A agent identities to this PDA and add scoring.
+#[account]
+#[derive(InitSpace)]
+pub struct Reputation {
+    pub maker: Pubkey,
+    pub quotes_submitted: u64,
+    pub quotes_won: u64,
+    pub settled_count: u64,
+    pub failed_reveals: u64,
+    pub bump: u8,
 }
 
 #[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntentStatus {
     Open = 0,
     Resolved = 1,
@@ -82,7 +101,26 @@ pub enum IntentStatus {
 }
 
 #[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
     Buy = 0,
     Sell = 1,
+}
+
+impl Side {
+    pub fn from_u8(v: u8) -> Option<Self> {
+        match v {
+            0 => Some(Side::Buy),
+            1 => Some(Side::Sell),
+            _ => None,
+        }
+    }
+}
+
+/// Compute the quote-side notional for a given size and price.
+/// Returns `None` on overflow.
+pub fn quote_notional(size: u64, price: u64) -> Option<u64> {
+    let n = (size as u128).checked_mul(price as u128)?;
+    let n = n.checked_div(PRICE_SCALE as u128)?;
+    u64::try_from(n).ok()
 }

@@ -25,7 +25,7 @@ pub struct SubmitQuote<'info> {
     #[account(
         init,
         payer = maker,
-        space = Quote::LEN,
+        space = 8 + Quote::INIT_SPACE,
         seeds = [QUOTE_SEED, intent.key().as_ref(), maker.key().as_ref(), &params.nonce],
         bump
     )]
@@ -43,6 +43,7 @@ pub(crate) fn handler(ctx: Context<SubmitQuote>, params: SubmitQuoteParams) -> R
     quote.revealed_size = 0;
     quote.nonce = [0u8; 32];
     quote.revealed = false;
+    quote.maker_funded = false;
     quote.bump = ctx.bumps.quote;
 
     emit!(QuoteSubmitted {

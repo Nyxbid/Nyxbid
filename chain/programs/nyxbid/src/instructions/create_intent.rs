@@ -29,7 +29,7 @@ pub struct CreateIntent<'info> {
     #[account(
         init,
         payer = taker,
-        space = Intent::LEN,
+        space = 8 + Intent::INIT_SPACE,
         seeds = [INTENT_SEED, taker.key().as_ref(), &params.nonce],
         bump
     )]
@@ -52,6 +52,7 @@ pub(crate) fn handler(ctx: Context<CreateIntent>, params: CreateIntentParams) ->
     intent.status = IntentStatus::Open as u8;
     intent.winning_quote = Pubkey::default();
     intent.bump = ctx.bumps.intent;
+    intent.escrow_bump = 0;
 
     emit!(IntentCreated {
         intent: intent.key(),

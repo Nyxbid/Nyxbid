@@ -24,7 +24,7 @@ pub struct Settle<'info> {
     #[account(
         init,
         payer = payer,
-        space = Receipt::LEN,
+        space = 8 + Receipt::INIT_SPACE,
         seeds = [RECEIPT_SEED, intent.key().as_ref()],
         bump
     )]
