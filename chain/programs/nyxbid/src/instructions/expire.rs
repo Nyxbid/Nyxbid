@@ -34,7 +34,7 @@ pub struct Expire<'info> {
         mut,
         constraint = intent.status == IntentStatus::Open as u8 @ NyxbidError::IntentNotOpen,
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         mut,
@@ -42,21 +42,21 @@ pub struct Expire<'info> {
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
     )]
-    pub escrow: Account<'info, Escrow>,
+    pub escrow: Box<Account<'info, Escrow>>,
 
     #[account(
         mut,
         seeds = [TAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub taker_vault: Account<'info, TokenAccount>,
+    pub taker_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = taker_destination.mint == escrow.taker_mint @ NyxbidError::WrongLockMint,
         constraint = taker_destination.owner == intent.taker @ NyxbidError::Unauthorized,
     )]
-    pub taker_destination: Account<'info, TokenAccount>,
+    pub taker_destination: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: receives the rent from taker_vault. Must be intent.taker.
     #[account(
@@ -70,14 +70,14 @@ pub struct Expire<'info> {
         seeds = [MAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub maker_vault: Account<'info, TokenAccount>,
+    pub maker_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = maker_destination.mint == escrow.maker_mint @ NyxbidError::WrongLockMint,
         constraint = maker_destination.owner == escrow.maker @ NyxbidError::Unauthorized,
     )]
-    pub maker_destination: Account<'info, TokenAccount>,
+    pub maker_destination: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: receives the rent from maker_vault. Must be escrow.maker.
     #[account(
@@ -92,7 +92,7 @@ pub struct Expire<'info> {
         bump = reputation.bump,
         constraint = reputation.maker == escrow.maker @ NyxbidError::Unauthorized,
     )]
-    pub reputation: Account<'info, Reputation>,
+    pub reputation: Box<Account<'info, Reputation>>,
 
     pub token_program: Program<'info, Token>,
 }

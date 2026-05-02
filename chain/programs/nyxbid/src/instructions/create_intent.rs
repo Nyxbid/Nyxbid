@@ -24,12 +24,12 @@ pub struct CreateIntent<'info> {
     #[account(mut)]
     pub taker: Signer<'info>,
 
-    pub base_mint: Account<'info, Mint>,
-    pub quote_mint: Account<'info, Mint>,
+    pub base_mint: Box<Account<'info, Mint>>,
+    pub quote_mint: Box<Account<'info, Mint>>,
 
     /// Source ATA the taker is locking from. Must hold the leg dictated by `side`.
     #[account(mut, token::authority = taker)]
-    pub taker_source: Account<'info, TokenAccount>,
+    pub taker_source: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -38,7 +38,7 @@ pub struct CreateIntent<'info> {
         seeds = [INTENT_SEED, taker.key().as_ref(), &params.nonce],
         bump
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         init,
@@ -47,7 +47,7 @@ pub struct CreateIntent<'info> {
         seeds = [ESCROW_SEED, intent.key().as_ref()],
         bump
     )]
-    pub escrow: Account<'info, Escrow>,
+    pub escrow: Box<Account<'info, Escrow>>,
 
     /// PDA-owned vault holding the taker's locked tokens until settle/refund.
     #[account(
@@ -58,11 +58,11 @@ pub struct CreateIntent<'info> {
         seeds = [TAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub taker_vault: Account<'info, TokenAccount>,
+    pub taker_vault: Box<Account<'info, TokenAccount>>,
 
     /// The mint actually being locked. Must match base_mint for sells,
     /// quote_mint for buys. Verified in handler.
-    pub taker_lock_mint: Account<'info, Mint>,
+    pub taker_lock_mint: Box<Account<'info, Mint>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

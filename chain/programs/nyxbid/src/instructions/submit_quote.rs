@@ -20,7 +20,7 @@ pub struct SubmitQuote<'info> {
         mut,
         constraint = intent.status == IntentStatus::Open as u8 @ NyxbidError::IntentNotOpen,
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         init,
@@ -29,7 +29,7 @@ pub struct SubmitQuote<'info> {
         seeds = [QUOTE_SEED, intent.key().as_ref(), maker.key().as_ref(), &params.nonce],
         bump
     )]
-    pub quote: Account<'info, Quote>,
+    pub quote: Box<Account<'info, Quote>>,
 
     /// Per-maker reputation. Created the first time a maker submits a quote.
     #[account(
@@ -39,7 +39,7 @@ pub struct SubmitQuote<'info> {
         seeds = [REPUTATION_SEED, maker.key().as_ref()],
         bump
     )]
-    pub reputation: Account<'info, Reputation>,
+    pub reputation: Box<Account<'info, Reputation>>,
 
     pub system_program: Program<'info, System>,
 }
