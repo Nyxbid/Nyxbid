@@ -7,12 +7,23 @@ use crate::state::{
 };
 
 /// The maker locks the opposite leg of the trade into a PDA-owned vault.
-/// Must be called after submit_quote and before resolve_auction.
+/// Must be called after submit_quote and before resolve_deadline.
+///
+/// Lifecycle invariant (Phase 1):
+///   There is exactly one `maker_vault` PDA per intent, derived from
+///   [MAKER_VAULT_SEED, intent.key()]. Only the maker who funds it first
+///   can be the winner of the auction. This is intentional:
+///   - submit_quote stays cheap and permissionless (any number of makers
+///     can post sealed commitments).
+///   - At reveal time only one maker steps up and locks the opposite
+///     leg, becoming the de facto winner.
+///   - resolve_auction then verifies their reveal matches the committed
+///     hash and that the locked amount equals quote_notional() implied
+///     by the revealed price/size. A wrong-sized fund forfeits the auction.
 ///
 /// The amount is the maker's own forecast of what they will reveal. The
-/// program does not check it against the commitment here (the commitment
-/// is still sealed). Resolve will reject the reveal if the funded amount
-/// is wrong, costing the maker the auction.
+/// program does not check it against the sealed commitment here. Resolve
+/// will reject the reveal if the funded amount is wrong.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct FundMakerEscrowParams {
     /// Amount of `maker_lock_mint` to lock.
@@ -71,6 +82,17 @@ pub(crate) fn handler(
     params: FundMakerEscrowParams,
 ) -> Result<()> {
     require!(params.amount > 0, NyxbidError::ZeroAmount);
+
+    // Block funding after the resolve_deadline. After this point
+    // resolve_auction is permanently blocked, so any newly locked maker
+    // funds could only be recovered through expire_with_maker - i.e. a
+    // grief vector. Funding after the deadline serves no protocol
+    // purpose so we simply reject it.
+    let clock = Clock::get()?;
+    require!(
+        clock.unix_timestamp < ctx.accounts.intent.resolve_deadline,
+        NyxbidError::ResolveDeadlinePassed
+    );
 
     let side = Side::from_u8(ctx.accounts.intent.side).ok_or(NyxbidError::InvalidSide)?;
     let expected_mint = match side {
