@@ -23,7 +23,7 @@ pub struct Cancel<'info> {
         constraint = taker.key() == intent.taker @ NyxbidError::Unauthorized,
         constraint = intent.status == IntentStatus::Open as u8 @ NyxbidError::IntentNotOpen,
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         mut,
@@ -32,21 +32,21 @@ pub struct Cancel<'info> {
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
         constraint = escrow.maker_amount == 0 @ NyxbidError::MakerAlreadyFunded,
     )]
-    pub escrow: Account<'info, Escrow>,
+    pub escrow: Box<Account<'info, Escrow>>,
 
     #[account(
         mut,
         seeds = [TAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub taker_vault: Account<'info, TokenAccount>,
+    pub taker_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         constraint = taker_destination.mint == escrow.taker_mint @ NyxbidError::WrongLockMint,
         constraint = taker_destination.owner == intent.taker @ NyxbidError::Unauthorized,
     )]
-    pub taker_destination: Account<'info, TokenAccount>,
+    pub taker_destination: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
 }

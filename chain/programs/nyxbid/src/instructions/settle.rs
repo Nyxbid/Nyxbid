@@ -17,13 +17,13 @@ pub struct Settle<'info> {
         mut,
         constraint = intent.status == IntentStatus::Resolved as u8 @ NyxbidError::IntentNotResolved,
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         constraint = winning_quote.key() == intent.winning_quote,
         constraint = winning_quote.revealed @ NyxbidError::AlreadyRevealed,
     )]
-    pub winning_quote: Account<'info, Quote>,
+    pub winning_quote: Box<Account<'info, Quote>>,
 
     #[account(
         mut,
@@ -31,21 +31,21 @@ pub struct Settle<'info> {
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
     )]
-    pub escrow: Account<'info, Escrow>,
+    pub escrow: Box<Account<'info, Escrow>>,
 
     #[account(
         mut,
         seeds = [TAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub taker_vault: Account<'info, TokenAccount>,
+    pub taker_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
         seeds = [MAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub maker_vault: Account<'info, TokenAccount>,
+    pub maker_vault: Box<Account<'info, TokenAccount>>,
 
     /// Maker's destination for the leg the taker locked.
     #[account(
@@ -53,7 +53,7 @@ pub struct Settle<'info> {
         constraint = maker_destination.mint == escrow.taker_mint @ NyxbidError::WrongLockMint,
         constraint = maker_destination.owner == winning_quote.maker @ NyxbidError::Unauthorized,
     )]
-    pub maker_destination: Account<'info, TokenAccount>,
+    pub maker_destination: Box<Account<'info, TokenAccount>>,
 
     /// Taker's destination for the leg the maker locked.
     #[account(
@@ -61,7 +61,7 @@ pub struct Settle<'info> {
         constraint = taker_destination.mint == escrow.maker_mint @ NyxbidError::WrongLockMint,
         constraint = taker_destination.owner == intent.taker @ NyxbidError::Unauthorized,
     )]
-    pub taker_destination: Account<'info, TokenAccount>,
+    pub taker_destination: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: must equal intent.taker; rent for taker_vault is returned here.
     #[account(
@@ -84,7 +84,7 @@ pub struct Settle<'info> {
         seeds = [RECEIPT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub receipt: Account<'info, Receipt>,
+    pub receipt: Box<Account<'info, Receipt>>,
 
     #[account(
         mut,
@@ -92,13 +92,13 @@ pub struct Settle<'info> {
         bump = reputation.bump,
         constraint = reputation.maker == winning_quote.maker @ NyxbidError::Unauthorized,
     )]
-    pub reputation: Account<'info, Reputation>,
+    pub reputation: Box<Account<'info, Reputation>>,
 
     /// Sanity-check the mints are still the same as recorded.
     #[account(constraint = base_mint.key() == intent.base_mint @ NyxbidError::WrongLockMint)]
-    pub base_mint: Account<'info, Mint>,
+    pub base_mint: Box<Account<'info, Mint>>,
     #[account(constraint = quote_mint.key() == intent.quote_mint @ NyxbidError::WrongLockMint)]
-    pub quote_mint: Account<'info, Mint>,
+    pub quote_mint: Box<Account<'info, Mint>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,

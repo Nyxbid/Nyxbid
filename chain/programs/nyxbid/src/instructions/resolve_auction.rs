@@ -24,7 +24,7 @@ pub struct ResolveAuction<'info> {
         mut,
         constraint = intent.status == IntentStatus::Open as u8 @ NyxbidError::IntentNotOpen,
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         mut,
@@ -32,14 +32,14 @@ pub struct ResolveAuction<'info> {
         constraint = !winning_quote.revealed @ NyxbidError::AlreadyRevealed,
         constraint = winning_quote.maker_funded @ NyxbidError::MakerNotFunded,
     )]
-    pub winning_quote: Account<'info, Quote>,
+    pub winning_quote: Box<Account<'info, Quote>>,
 
     #[account(
         seeds = [ESCROW_SEED, intent.key().as_ref()],
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
     )]
-    pub escrow: Account<'info, Escrow>,
+    pub escrow: Box<Account<'info, Escrow>>,
 
     #[account(
         mut,
@@ -47,7 +47,7 @@ pub struct ResolveAuction<'info> {
         bump = reputation.bump,
         constraint = reputation.maker == winning_quote.maker @ NyxbidError::Unauthorized,
     )]
-    pub reputation: Account<'info, Reputation>,
+    pub reputation: Box<Account<'info, Reputation>>,
 }
 
 pub(crate) fn handler(ctx: Context<ResolveAuction>, params: ResolveAuctionParams) -> Result<()> {

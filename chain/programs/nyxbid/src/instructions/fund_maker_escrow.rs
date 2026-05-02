@@ -27,7 +27,7 @@ pub struct FundMakerEscrow<'info> {
     #[account(
         constraint = intent.status == IntentStatus::Open as u8 @ NyxbidError::IntentNotOpen,
     )]
-    pub intent: Account<'info, Intent>,
+    pub intent: Box<Account<'info, Intent>>,
 
     #[account(
         mut,
@@ -35,7 +35,7 @@ pub struct FundMakerEscrow<'info> {
         constraint = quote.maker == maker.key() @ NyxbidError::Unauthorized,
         constraint = !quote.maker_funded @ NyxbidError::MakerAlreadyFunded,
     )]
-    pub quote: Account<'info, Quote>,
+    pub quote: Box<Account<'info, Quote>>,
 
     #[account(
         mut,
@@ -43,13 +43,13 @@ pub struct FundMakerEscrow<'info> {
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
     )]
-    pub escrow: Account<'info, Escrow>,
+    pub escrow: Box<Account<'info, Escrow>>,
 
     /// The mint the maker delivers. Buy intent => base_mint; sell => quote_mint.
-    pub maker_lock_mint: Account<'info, Mint>,
+    pub maker_lock_mint: Box<Account<'info, Mint>>,
 
     #[account(mut, token::authority = maker)]
-    pub maker_source: Account<'info, TokenAccount>,
+    pub maker_source: Box<Account<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -59,7 +59,7 @@ pub struct FundMakerEscrow<'info> {
         seeds = [MAKER_VAULT_SEED, intent.key().as_ref()],
         bump
     )]
-    pub maker_vault: Account<'info, TokenAccount>,
+    pub maker_vault: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
