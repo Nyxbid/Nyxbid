@@ -20,8 +20,9 @@ pub struct Settle<'info> {
     pub intent: Box<Account<'info, Intent>>,
 
     #[account(
-        constraint = winning_quote.key() == intent.winning_quote,
-        constraint = winning_quote.revealed @ NyxbidError::AlreadyRevealed,
+        constraint = winning_quote.key() == intent.winning_quote @ NyxbidError::NotWinningMaker,
+        constraint = winning_quote.revealed @ NyxbidError::NotRevealed,
+        constraint = winning_quote.maker_funded @ NyxbidError::MakerNotFunded,
     )]
     pub winning_quote: Box<Account<'info, Quote>>,
 
@@ -106,6 +107,15 @@ pub struct Settle<'info> {
 
 pub(crate) fn handler(ctx: Context<Settle>) -> Result<()> {
     let clock = Clock::get()?;
+
+    // Settle must happen inside the grace window. Past the deadline,
+    // the taker can call expire_with_maker to recover their leg and
+    // the winning maker takes a failed_reveals reputation hit.
+    require!(
+        clock.unix_timestamp < ctx.accounts.intent.settle_deadline,
+        NyxbidError::SettleDeadlinePassed
+    );
+
     let intent_key = ctx.accounts.intent.key();
     let escrow_bump = ctx.accounts.intent.escrow_bump;
 
