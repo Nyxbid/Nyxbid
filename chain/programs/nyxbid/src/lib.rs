@@ -49,7 +49,11 @@ pub mod nyxbid {
         instructions::cancel::handler(ctx)
     }
 
-    pub fn expire(ctx: Context<Expire>) -> Result<()> {
-        instructions::expire::handler(ctx)
+    pub fn expire_with_maker(ctx: Context<ExpireWithMaker>) -> Result<()> {
+        instructions::expire_with_maker::handler(ctx)
+    }
+
+    pub fn expire_no_maker(ctx: Context<ExpireNoMaker>) -> Result<()> {
+        instructions::expire_no_maker::handler(ctx)
     }
 }
