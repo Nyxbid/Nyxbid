@@ -52,4 +52,10 @@ pub enum NyxbidError {
     SettleDeadlineNotReached,
     #[msg("fund amount does not match revealed notional")]
     WrongFundAmount,
+    #[msg("expire_no_maker requires winning_quote and reputation accounts when a winner exists")]
+    MissingWinnerAccounts,
+    #[msg("winner accounts must not be passed when no winning quote was selected")]
+    UnexpectedWinnerAccounts,
+    #[msg("reveal deadline must be in the future and leave a minimum submit window")]
+    SubmitWindowTooShort,
 }
