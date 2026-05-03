@@ -22,11 +22,27 @@ pub struct Intent {
     pub quote_mint: Pubkey,
     pub size: u64,
     pub limit_price: u64,
+    /// Submit window: clients can submit sealed quotes while
+    /// `clock < reveal_deadline`.
     pub reveal_deadline: i64,
+    /// Reveal window: makers can reveal between `reveal_deadline` and
+    /// `resolve_deadline`. Each valid reveal can replace the current
+    /// winner if it improves the price.
     pub resolve_deadline: i64,
+    /// Settle window: after `resolve_deadline` the winner is final and
+    /// must fund + settle before `settle_deadline`. After that, the
+    /// taker can expire and recover their funds (and the would-be
+    /// winner takes a `failed_reveals` reputation hit).
+    pub settle_deadline: i64,
     pub commitment_root: [u8; 32],
     pub status: u8,
+    /// Best valid revealed quote so far. Default Pubkey if no maker has
+    /// successfully revealed.
     pub winning_quote: Pubkey,
+    /// Best price revealed so far, in PRICE_SCALE units. Cached on the
+    /// Intent so reveal_quote can compare without deserializing the
+    /// previous winning quote account.
+    pub winning_price: u64,
     /// Cached PDA bumps for cheap signer-seeds derivation later.
     pub bump: u8,
     pub escrow_bump: u8,
