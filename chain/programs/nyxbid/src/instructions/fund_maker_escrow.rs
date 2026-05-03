@@ -6,24 +6,24 @@ use crate::state::{
     Escrow, Intent, IntentStatus, Quote, Side, ESCROW_SEED, MAKER_VAULT_SEED,
 };
 
-/// The maker locks the opposite leg of the trade into a PDA-owned vault.
-/// Must be called after submit_quote and before resolve_deadline.
+/// The winning maker locks the opposite leg of the trade into a
+/// PDA-owned vault, after the auction's reveal window has selected them.
 ///
-/// Lifecycle invariant (Phase 1):
-///   There is exactly one `maker_vault` PDA per intent, derived from
-///   [MAKER_VAULT_SEED, intent.key()]. Only the maker who funds it first
-///   can be the winner of the auction. This is intentional:
-///   - submit_quote stays cheap and permissionless (any number of makers
-///     can post sealed commitments).
-///   - At reveal time only one maker steps up and locks the opposite
-///     leg, becoming the de facto winner.
-///   - resolve_auction then verifies their reveal matches the committed
-///     hash and that the locked amount equals quote_notional() implied
-///     by the revealed price/size. A wrong-sized fund forfeits the auction.
+/// Lifecycle (Phase 1):
+///   1. create_intent: taker locks their leg in taker_vault.
+///   2. submit_quote: makers post sealed commitments (no funding).
+///   3. reveal_quote (during the reveal window): each maker reveals.
+///      The program keeps the best valid revealed quote in
+///      intent.winning_quote (lowest price for buy / highest for sell).
+///   4. After resolve_deadline the winner is final.
+///   5. fund_maker_escrow (this instruction): only the maker pointed to
+///      by intent.winning_quote can call this, and only between
+///      resolve_deadline and settle_deadline.
+///   6. settle: dual CPI atomic swap.
 ///
-/// The amount is the maker's own forecast of what they will reveal. The
-/// program does not check it against the sealed commitment here. Resolve
-/// will reject the reveal if the funded amount is wrong.
+/// Single maker_vault per intent is intentional: the auction selects one
+/// winner, and only that winner ever needs to lock capital. Losing
+/// makers never tied up funds.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct FundMakerEscrowParams {
     /// Amount of `maker_lock_mint` to lock.

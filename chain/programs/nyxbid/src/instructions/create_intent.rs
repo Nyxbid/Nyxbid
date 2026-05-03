@@ -14,6 +14,7 @@ pub struct CreateIntentParams {
     pub limit_price: u64,
     pub reveal_deadline: i64,
     pub resolve_deadline: i64,
+    pub settle_deadline: i64,
     pub commitment_root: [u8; 32],
     pub nonce: [u8; 16],
 }
@@ -102,7 +103,8 @@ pub(crate) fn handler(ctx: Context<CreateIntent>, params: CreateIntentParams) ->
     );
     require!(lock_amount > 0, NyxbidError::ZeroAmount);
     require!(
-        params.resolve_deadline > params.reveal_deadline,
+        params.resolve_deadline > params.reveal_deadline
+            && params.settle_deadline > params.resolve_deadline,
         NyxbidError::BadDeadlines
     );
 
@@ -126,9 +128,11 @@ pub(crate) fn handler(ctx: Context<CreateIntent>, params: CreateIntentParams) ->
     intent.limit_price = params.limit_price;
     intent.reveal_deadline = params.reveal_deadline;
     intent.resolve_deadline = params.resolve_deadline;
+    intent.settle_deadline = params.settle_deadline;
     intent.commitment_root = params.commitment_root;
     intent.status = IntentStatus::Open as u8;
     intent.winning_quote = Pubkey::default();
+    intent.winning_price = 0;
     intent.bump = ctx.bumps.intent;
     intent.escrow_bump = ctx.bumps.escrow;
 
