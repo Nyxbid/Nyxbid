@@ -8,31 +8,33 @@ use crate::state::{
     TAKER_VAULT_SEED,
 };
 
-/// Permissionless expiry. Anyone can call this after resolve_deadline
-/// if the auction is still Open. Both legs (if funded) are returned to
-/// their original owners.
+/// Recovery path when the winning maker funded the maker_vault but never
+/// reached settle before the settle_deadline. Permissionless: anyone can
+/// trigger after the deadline. Both legs are refunded to their original
+/// owners and the maker takes a failed_reveals reputation hit.
 ///
-/// Two shapes:
-///  - Maker never funded: only the taker_vault is refunded/closed.
-///    `maker_vault` and `maker_destination` and `maker_rent_beneficiary`
-///    are passed but ignored.
-///  - Maker funded: both vaults refunded/closed.
+/// Use cases:
+///   - Winner crashed / went offline between fund_maker_escrow and settle.
+///   - Winner griefed by funding-then-not-settling. The reputation hit
+///     and rent loss disincentivize this.
 ///
-/// We keep the account list fixed for predictable IDL/SDK ergonomics.
-/// The maker leg accounts may be dummy-equal-to-taker accounts if there
-/// is no maker_vault \u2014 but we can't actually fake a missing PDA, so the
-/// flow currently requires the maker_vault PDA exists. To keep this
-/// simple in Phase 1, we split into two flavours: this instruction
-/// expects maker_vault is present (escrow.maker != default). For the
-/// no-maker case use cancel before resolve_deadline, or expire_no_maker.
+/// Constraints:
+///   - intent.status is Open or Resolved (Resolved means a winner was
+///     selected and funded but never settled),
+///   - escrow not already settled,
+///   - clock >= settle_deadline,
+///   - escrow.maker_amount > 0 (must have funded - the no-funder case
+///     uses expire_no_maker).
 #[derive(Accounts)]
-pub struct Expire<'info> {
+pub struct ExpireWithMaker<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
     #[account(
         mut,
-        constraint = intent.status == IntentStatus::Open as u8 @ NyxbidError::IntentNotOpen,
+        constraint = (intent.status == IntentStatus::Open as u8
+            || intent.status == IntentStatus::Resolved as u8)
+            @ NyxbidError::IntentNotOpen,
     )]
     pub intent: Box<Account<'info, Intent>>,
 
@@ -41,6 +43,7 @@ pub struct Expire<'info> {
         seeds = [ESCROW_SEED, intent.key().as_ref()],
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
+        constraint = escrow.maker_amount > 0 @ NyxbidError::MakerNotFunded,
     )]
     pub escrow: Box<Account<'info, Escrow>>,
 
@@ -97,17 +100,11 @@ pub struct Expire<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub(crate) fn handler(ctx: Context<Expire>) -> Result<()> {
+pub(crate) fn handler(ctx: Context<ExpireWithMaker>) -> Result<()> {
     let clock = Clock::get()?;
     require!(
-        clock.unix_timestamp >= ctx.accounts.intent.resolve_deadline,
-        NyxbidError::ResolveDeadlineNotReached
-    );
-    // Maker funding is required to use this instruction; if none, taker
-    // should have used cancel before the deadline. Surface a clear error.
-    require!(
-        ctx.accounts.escrow.maker_amount > 0,
-        NyxbidError::MakerNotFunded
+        clock.unix_timestamp >= ctx.accounts.intent.settle_deadline,
+        NyxbidError::SettleDeadlineNotReached
     );
 
     let intent_key = ctx.accounts.intent.key();
@@ -167,13 +164,13 @@ pub(crate) fn handler(ctx: Context<Expire>) -> Result<()> {
     let intent = &mut ctx.accounts.intent;
     intent.status = IntentStatus::Expired as u8;
 
-    // The maker funded but never revealed in time. Count as a failed reveal.
+    // The maker funded but never settled in time. Count as a failed reveal.
     let rep = &mut ctx.accounts.reputation;
     rep.failed_reveals = rep.failed_reveals.saturating_add(1);
 
     emit!(Cancelled {
         intent: intent.key(),
-        reason: 1, // 0 = cancel, 1 = expire
+        reason: 1, // 0 = cancel, 1 = expire_with_maker, 2 = expire_no_maker
     });
 
     Ok(())
