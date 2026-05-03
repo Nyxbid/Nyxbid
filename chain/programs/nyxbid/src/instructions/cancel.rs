@@ -9,10 +9,12 @@ use crate::state::{
 
 /// Taker-initiated cancel. Refunds the locked taker leg and closes the
 /// taker vault. Only allowed if:
-///   - intent is still Open (no winning quote locked in),
-///   - no maker has funded the opposite leg (would be unfair to that maker),
-///   - resolve_deadline has not passed (after that the expire path is used,
-///     which has slightly different semantics for already-funded auctions).
+///   - intent is still Open,
+///   - clock < reveal_deadline (i.e. before any maker can act on the
+///     quote): once the reveal window opens, makers may have started
+///     committing capital decisions based on the live intent. Recovery
+///     past this point is via expire_no_maker / expire_with_maker.
+///   - escrow not already settled and no maker has funded.
 #[derive(Accounts)]
 pub struct Cancel<'info> {
     #[account(mut)]
@@ -57,8 +59,8 @@ pub(crate) fn handler(ctx: Context<Cancel>) -> Result<()> {
     let escrow_bump = ctx.accounts.intent.escrow_bump;
 
     require!(
-        clock.unix_timestamp < ctx.accounts.intent.resolve_deadline,
-        NyxbidError::ResolveDeadlinePassed
+        clock.unix_timestamp < ctx.accounts.intent.reveal_deadline,
+        NyxbidError::RevealDeadlinePassed
     );
 
     let signer_seeds: &[&[u8]] = &[ESCROW_SEED, intent_key.as_ref(), &[escrow_bump]];
