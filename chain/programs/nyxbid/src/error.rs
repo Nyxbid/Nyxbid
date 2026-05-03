@@ -42,4 +42,14 @@ pub enum NyxbidError {
     MakerNotFunded,
     #[msg("maker already funded")]
     MakerAlreadyFunded,
+    #[msg("caller is not the winning maker")]
+    NotWinningMaker,
+    #[msg("quote has not been revealed")]
+    NotRevealed,
+    #[msg("settle deadline has passed")]
+    SettleDeadlinePassed,
+    #[msg("settle deadline has not passed")]
+    SettleDeadlineNotReached,
+    #[msg("fund amount does not match revealed notional")]
+    WrongFundAmount,
 }
