@@ -19,8 +19,10 @@ use crate::state::{
 ///     and rent loss disincentivize this.
 ///
 /// Constraints:
-///   - intent.status is Open or Resolved (Resolved means a winner was
-///     selected and funded but never settled),
+///   - intent.status == Resolved. fund_maker_escrow atomically sets
+///     status -> Resolved AND escrow.maker_amount > 0 in the same tx,
+///     so any auction with maker_amount > 0 is necessarily Resolved.
+///     The previous Open || Resolved branch was dead code.
 ///   - escrow not already settled,
 ///   - clock >= settle_deadline,
 ///   - escrow.maker_amount > 0 (must have funded - the no-funder case
@@ -32,9 +34,8 @@ pub struct ExpireWithMaker<'info> {
 
     #[account(
         mut,
-        constraint = (intent.status == IntentStatus::Open as u8
-            || intent.status == IntentStatus::Resolved as u8)
-            @ NyxbidError::IntentNotOpen,
+        constraint = intent.status == IntentStatus::Resolved as u8
+            @ NyxbidError::IntentNotResolved,
     )]
     pub intent: Box<Account<'info, Intent>>,
 
