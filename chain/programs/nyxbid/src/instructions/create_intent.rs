@@ -4,7 +4,8 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use crate::error::NyxbidError;
 use crate::events::IntentCreated;
 use crate::state::{
-    quote_notional, Escrow, Intent, IntentStatus, Side, ESCROW_SEED, INTENT_SEED, TAKER_VAULT_SEED,
+    quote_notional, Escrow, Intent, IntentStatus, Side, ESCROW_SEED, INTENT_SEED,
+    MIN_SUBMIT_WINDOW_SECS, TAKER_VAULT_SEED,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -106,6 +107,16 @@ pub(crate) fn handler(ctx: Context<CreateIntent>, params: CreateIntentParams) ->
         params.resolve_deadline > params.reveal_deadline
             && params.settle_deadline > params.resolve_deadline,
         NyxbidError::BadDeadlines
+    );
+
+    // Reject intents whose submit window is already closed or absurdly
+    // short. Without this check, a taker (or buggy client) can lock
+    // funds in an intent that no maker can ever quote, forcing the
+    // taker to wait out settle_deadline and call expire_no_maker.
+    let clock = Clock::get()?;
+    require!(
+        params.reveal_deadline >= clock.unix_timestamp.saturating_add(MIN_SUBMIT_WINDOW_SECS),
+        NyxbidError::SubmitWindowTooShort
     );
 
     // CPI: taker_source -> taker_vault (PDA-owned).
