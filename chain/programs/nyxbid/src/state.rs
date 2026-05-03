@@ -13,6 +13,13 @@ pub const REPUTATION_SEED: &[u8] = b"reputation";
 /// `quote_amount = size * price / PRICE_SCALE` (computed in u128).
 pub const PRICE_SCALE: u64 = 1_000_000;
 
+/// Minimum gap (in seconds) between `clock.unix_timestamp` and
+/// `reveal_deadline` at intent creation time. Prevents a taker from
+/// locking funds into an intent whose submit window is already closed
+/// or absurdly short. 5 seconds gives makers a meaningful chance to
+/// observe the intent and submit a sealed quote.
+pub const MIN_SUBMIT_WINDOW_SECS: i64 = 5;
+
 #[account]
 #[derive(InitSpace)]
 pub struct Intent {
