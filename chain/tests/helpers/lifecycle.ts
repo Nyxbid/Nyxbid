@@ -13,7 +13,7 @@
  *   await lc.fundMakerEscrow();
  *   await lc.settle();
  */
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import {
   Keypair,
   PublicKey,
