@@ -93,6 +93,15 @@ pub struct Escrow {
     pub maker_vault_bump: u8,
 }
 
+/// On-chain proof of a settled fill. Intentionally permanent: indexers,
+/// dispute resolution, and the public `/fills` UI all rely on this PDA
+/// remaining queryable indefinitely. The ~0.0015 SOL of rent per settle
+/// is the storage cost of that proof and is paid by the settle `payer`
+/// (typically the taker, but anyone can settle).
+///
+/// If the per-trade rent ever becomes a concern, a permissionless
+/// `close_receipt` instruction with a long delay (e.g. 90 days,
+/// post-indexing) could reclaim it. Out of scope for Phase 1.
 #[account]
 #[derive(InitSpace)]
 pub struct Receipt {
