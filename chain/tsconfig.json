@@ -10,5 +10,8 @@
     "strict": false,
     "skipLibCheck": true
   },
-  "include": ["tests/**/*.ts"]
+  "include": ["tests/**/*.ts"],
+  "ts-node": {
+    "transpileOnly": true
+  }
 }
