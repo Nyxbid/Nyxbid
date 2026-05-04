@@ -18,6 +18,17 @@ pub struct QuoteSubmitted {
 }
 
 #[event]
+pub struct QuoteRevealed {
+    pub intent: Pubkey,
+    pub quote: Pubkey,
+    pub maker: Pubkey,
+    pub revealed_price: u64,
+    pub revealed_size: u64,
+    /// True if this reveal made the quote the current best bid.
+    pub is_best: bool,
+}
+
+#[event]
 pub struct AuctionResolved {
     pub intent: Pubkey,
     pub winning_quote: Pubkey,

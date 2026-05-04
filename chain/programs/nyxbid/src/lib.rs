@@ -27,11 +27,18 @@ pub mod nyxbid {
         instructions::submit_quote::handler(ctx, params)
     }
 
-    pub fn resolve_auction(
-        ctx: Context<ResolveAuction>,
-        params: ResolveAuctionParams,
+    pub fn reveal_quote(
+        ctx: Context<RevealQuote>,
+        params: RevealQuoteParams,
     ) -> Result<()> {
-        instructions::resolve_auction::handler(ctx, params)
+        instructions::reveal_quote::handler(ctx, params)
+    }
+
+    pub fn fund_maker_escrow(
+        ctx: Context<FundMakerEscrow>,
+        params: FundMakerEscrowParams,
+    ) -> Result<()> {
+        instructions::fund_maker_escrow::handler(ctx, params)
     }
 
     pub fn settle(ctx: Context<Settle>) -> Result<()> {
@@ -40,5 +47,13 @@ pub mod nyxbid {
 
     pub fn cancel(ctx: Context<Cancel>) -> Result<()> {
         instructions::cancel::handler(ctx)
+    }
+
+    pub fn expire_with_maker(ctx: Context<ExpireWithMaker>) -> Result<()> {
+        instructions::expire_with_maker::handler(ctx)
+    }
+
+    pub fn expire_no_maker(ctx: Context<ExpireNoMaker>) -> Result<()> {
+        instructions::expire_no_maker::handler(ctx)
     }
 }
