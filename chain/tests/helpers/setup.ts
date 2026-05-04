@@ -136,6 +136,16 @@ export async function warpBy(ctx: TestCtx, deltaSecs: number): Promise<void> {
   await warpTo(ctx, t + deltaSecs);
 }
 
+/**
+ * Advance one bankrun slot. Forces a fresh blockhash so subsequent txs
+ * with the same instruction/accounts/signers don't collide on the
+ * "transaction already processed" check.
+ */
+export async function nextSlot(ctx: TestCtx): Promise<void> {
+  const clock = await ctx.context.banksClient.getClock();
+  ctx.context.warpToSlot(clock.slot + 1n);
+}
+
 // ---------- Funding + mints (bankrun-native) ----------
 
 /**
