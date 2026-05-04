@@ -156,6 +156,8 @@ pub(crate) fn handler(ctx: Context<CreateIntent>, params: CreateIntentParams) ->
     escrow.maker_mint = Pubkey::default();
     escrow.settled = false;
     escrow.bump = ctx.bumps.escrow;
+    escrow.taker_vault_bump = ctx.bumps.taker_vault;
+    escrow.maker_vault_bump = 0; // set in fund_maker_escrow
 
     emit!(IntentCreated {
         intent: intent.key(),

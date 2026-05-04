@@ -84,6 +84,13 @@ pub struct Escrow {
     pub maker_mint: Pubkey,
     pub settled: bool,
     pub bump: u8,
+    /// Cached PDA bump for the taker_vault token account so later
+    /// instructions can pass `bump = escrow.taker_vault_bump` and skip
+    /// the ~1500 CU find_program_address re-derivation.
+    pub taker_vault_bump: u8,
+    /// Same for maker_vault. Set during fund_maker_escrow; remains 0
+    /// until the winning maker funds.
+    pub maker_vault_bump: u8,
 }
 
 #[account]

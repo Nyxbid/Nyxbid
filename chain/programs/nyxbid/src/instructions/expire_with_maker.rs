@@ -52,7 +52,7 @@ pub struct ExpireWithMaker<'info> {
     #[account(
         mut,
         seeds = [TAKER_VAULT_SEED, intent.key().as_ref()],
-        bump
+        bump = escrow.taker_vault_bump,
     )]
     pub taker_vault: Box<Account<'info, TokenAccount>>,
 
@@ -73,7 +73,7 @@ pub struct ExpireWithMaker<'info> {
     #[account(
         mut,
         seeds = [MAKER_VAULT_SEED, intent.key().as_ref()],
-        bump
+        bump = escrow.maker_vault_bump,
     )]
     pub maker_vault: Box<Account<'info, TokenAccount>>,
 
