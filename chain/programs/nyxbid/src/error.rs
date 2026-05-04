@@ -58,4 +58,6 @@ pub enum NyxbidError {
     UnexpectedWinnerAccounts,
     #[msg("reveal deadline must be in the future and leave a minimum submit window")]
     SubmitWindowTooShort,
+    #[msg("buy-side settle requires taker_refund_destination when filled_price < limit_price")]
+    MissingRefundDestination,
 }
