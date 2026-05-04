@@ -65,6 +65,7 @@ pub struct ExpireNoMaker<'info> {
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
         constraint = escrow.maker_amount == 0 @ NyxbidError::MakerAlreadyFunded,
+        close = taker_rent_beneficiary,
     )]
     pub escrow: Box<Account<'info, Escrow>>,
 

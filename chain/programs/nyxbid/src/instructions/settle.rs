@@ -31,6 +31,7 @@ pub struct Settle<'info> {
         seeds = [ESCROW_SEED, intent.key().as_ref()],
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
+        close = taker_rent_beneficiary,
     )]
     pub escrow: Box<Account<'info, Escrow>>,
 
