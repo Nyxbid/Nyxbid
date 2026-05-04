@@ -33,6 +33,7 @@ pub struct Cancel<'info> {
         bump = intent.escrow_bump,
         constraint = !escrow.settled @ NyxbidError::AlreadySettled,
         constraint = escrow.maker_amount == 0 @ NyxbidError::MakerAlreadyFunded,
+        close = taker,
     )]
     pub escrow: Box<Account<'info, Escrow>>,
 
