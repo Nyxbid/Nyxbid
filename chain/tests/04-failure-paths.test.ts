@@ -8,7 +8,7 @@
  * SubmitWindowTooShort, etc.).
  */
 import { describe, it, expect } from "bun:test";
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import {
   bootstrap,
   fundedKeypair,

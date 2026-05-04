@@ -18,7 +18,7 @@
  *   - Receipt is written, reputation counters bump correctly.
  */
 import { describe, it, expect } from "bun:test";
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import {
   bootstrap,
   fundedKeypair,

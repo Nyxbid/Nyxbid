@@ -36,13 +36,13 @@ pub fn boot_svm(payers: &[&Keypair]) -> LiteSVM {
         "/../../target/deploy/nyxbid.so"
     ))
     .expect("nyxbid.so not found - run `anchor build` first");
-    svm.add_program(program_id(), &so);
+    svm.add_program(program_id(), &so).unwrap();
 
     let spl_token_so = include_bytes!("./fixtures/spl_token.so");
-    svm.add_program(spl_token_id(), spl_token_so);
+    svm.add_program(spl_token_id(), spl_token_so).unwrap();
 
     let spl_ata_so = include_bytes!("./fixtures/spl_associated_token_account.so");
-    svm.add_program(spl_ata_id(), spl_ata_so);
+    svm.add_program(spl_ata_id(), spl_ata_so).unwrap();
 
     for kp in payers {
         svm.airdrop(&kp.pubkey(), 1_000_000_000_000).unwrap();

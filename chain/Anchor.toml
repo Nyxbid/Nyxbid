@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-nyxbid = "E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2"
+nyxbid = "nyxkGtm8x7GMdTWKyy5TKa72pgsebrECrchPDuRSrEQ"
 
 [programs.localnet]
-nyxbid = "E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2"
+nyxbid = "nyxkGtm8x7GMdTWKyy5TKa72pgsebrECrchPDuRSrEQ"
 
 [provider]
 cluster = "devnet"
