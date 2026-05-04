@@ -112,6 +112,9 @@ pub struct Settle<'info> {
     )]
     pub maker_rent_beneficiary: UncheckedAccount<'info>,
 
+    /// Permanent on-chain fill record. Not closed at settle (or anywhere
+    /// else in Phase 1) - see Receipt doc comment in state.rs for the
+    /// rationale.
     #[account(
         init,
         payer = payer,
