@@ -13,7 +13,7 @@ import {
   setProvider,
   Wallet,
   BN,
-} from "@coral-xyz/anchor";
+} from "@anchor-lang/core";
 import {
   Keypair,
   PublicKey,
@@ -38,7 +38,7 @@ import type { Nyxbid } from "../../target/types/nyxbid";
 const idl = require("../../target/idl/nyxbid.json");
 
 export const PROGRAM_ID = new PublicKey(
-  "E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2"
+  "nyxkGtm8x7GMdTWKyy5TKa72pgsebrECrchPDuRSrEQ"
 );
 
 // Mirrors `pub const PRICE_SCALE: u64 = 1_000_000;` in state.rs.

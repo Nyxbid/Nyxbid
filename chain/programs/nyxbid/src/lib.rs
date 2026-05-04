@@ -7,7 +7,7 @@ pub mod state;
 
 pub use instructions::*;
 
-declare_id!("E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2");
+declare_id!("nyxkGtm8x7GMdTWKyy5TKa72pgsebrECrchPDuRSrEQ");
 
 #[program]
 pub mod nyxbid {
