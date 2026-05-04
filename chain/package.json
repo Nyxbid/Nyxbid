@@ -21,6 +21,6 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "test": "RUST_LOG=warn bun test tests/"
+    "test": "RUST_LOG=error bun test tests/"
   }
 }
