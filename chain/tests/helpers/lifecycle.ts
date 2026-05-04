@@ -258,16 +258,38 @@ export class Lifecycle {
       .rpc();
   }
 
+  /**
+   * Warp into the reveal window: clock = revealDeadline + deltaPastDeadline.
+   * Derived from the actual stored deadline so callers who passed custom
+   * timing via Lifecycle.create({ revealAfter, ... }) land in the right window.
+   */
   async warpToReveal(deltaPastDeadline = 1): Promise<void> {
-    await warpTo(this.ctx, this.t0 + 30 + deltaPastDeadline);
+    await warpTo(
+      this.ctx,
+      this.revealDeadline.toNumber() + deltaPastDeadline
+    );
   }
 
+  /**
+   * Warp into the settle window: clock = resolveDeadline + deltaPastDeadline.
+   * Same derivation note as warpToReveal.
+   */
   async warpToSettle(deltaPastDeadline = 1): Promise<void> {
-    await warpTo(this.ctx, this.t0 + 60 + deltaPastDeadline);
+    await warpTo(
+      this.ctx,
+      this.resolveDeadline.toNumber() + deltaPastDeadline
+    );
   }
 
+  /**
+   * Warp past the settle window: clock = settleDeadline + deltaPastDeadline.
+   * Same derivation note as warpToReveal.
+   */
   async warpPastSettleDeadline(deltaPastDeadline = 1): Promise<void> {
-    await warpTo(this.ctx, this.t0 + 90 + deltaPastDeadline);
+    await warpTo(
+      this.ctx,
+      this.settleDeadline.toNumber() + deltaPastDeadline
+    );
   }
 
   async revealQuote(): Promise<void> {
