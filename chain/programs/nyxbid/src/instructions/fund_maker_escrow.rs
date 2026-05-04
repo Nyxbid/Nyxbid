@@ -166,6 +166,7 @@ pub(crate) fn handler(
     escrow.maker = ctx.accounts.maker.key();
     escrow.maker_amount = params.amount;
     escrow.maker_mint = expected_mint;
+    escrow.maker_vault_bump = ctx.bumps.maker_vault;
 
     let quote = &mut ctx.accounts.quote;
     quote.maker_funded = true;

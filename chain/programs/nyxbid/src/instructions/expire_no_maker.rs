@@ -72,7 +72,7 @@ pub struct ExpireNoMaker<'info> {
     #[account(
         mut,
         seeds = [TAKER_VAULT_SEED, intent.key().as_ref()],
-        bump
+        bump = escrow.taker_vault_bump,
     )]
     pub taker_vault: Box<Account<'info, TokenAccount>>,
 
