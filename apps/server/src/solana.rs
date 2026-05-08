@@ -68,6 +68,10 @@ pub enum TxStatus {
 #[derive(Clone)]
 pub struct SolanaClient {
     pub rpc_url: String,
+    /// WebSocket endpoint used by the log indexer. Derived from
+    /// `rpc_url` (https -> wss, http -> ws) unless `SOLANA_WS_URL`
+    /// overrides it.
+    pub ws_url: String,
     pub program_id: Pubkey,
     pub usdc_mint: Pubkey,
     /// `Arc` because the indexer holds one and route handlers hold another.
@@ -93,6 +97,7 @@ impl SolanaClient {
     /// - `NYXBID_USDC_MINT` (optional): defaults to the devnet USDC faucet mint.
     pub fn from_env() -> Option<Self> {
         let rpc_url = env::var("SOLANA_RPC_URL").ok()?;
+        let ws_url = env::var("SOLANA_WS_URL").unwrap_or_else(|_| derive_ws_url(&rpc_url));
         let program_id = match env::var("NYXBID_PROGRAM_ID") {
             Ok(s) => match Pubkey::from_str(&s) {
                 Ok(pk) => {
@@ -127,6 +132,7 @@ impl SolanaClient {
 
         Some(Self {
             rpc_url,
+            ws_url,
             program_id,
             usdc_mint,
             rpc: Arc::new(rpc),
@@ -315,6 +321,44 @@ impl SolanaClient {
                 }
             }
         }
+    }
+}
+
+/// Map an HTTP RPC URL to its WebSocket equivalent.
+fn derive_ws_url(rpc: &str) -> String {
+    if let Some(rest) = rpc.strip_prefix("https://") {
+        format!("wss://{rest}")
+    } else if let Some(rest) = rpc.strip_prefix("http://") {
+        format!("ws://{rest}")
+    } else {
+        // Already ws/wss/something else; pass through.
+        rpc.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::derive_ws_url;
+
+    #[test]
+    fn ws_url_https_to_wss() {
+        assert_eq!(
+            derive_ws_url("https://api.devnet.solana.com"),
+            "wss://api.devnet.solana.com"
+        );
+    }
+
+    #[test]
+    fn ws_url_http_to_ws() {
+        assert_eq!(derive_ws_url("http://127.0.0.1:8899"), "ws://127.0.0.1:8899");
+    }
+
+    #[test]
+    fn ws_url_passthrough_for_already_ws() {
+        assert_eq!(
+            derive_ws_url("wss://example.com"),
+            "wss://example.com"
+        );
     }
 }
 

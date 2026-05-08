@@ -47,13 +47,20 @@ struct Health {
     name: &'static str,
     version: &'static str,
     status: &'static str,
+    solana_configured: bool,
+    program_id: Option<String>,
+    indexer: Option<crate::indexer::IndexerMetricsSnapshot>,
 }
 
-async fn health() -> Json<Health> {
+async fn health(State(state): State<SharedState>) -> Json<Health> {
+    let s = state.read().await;
     Json(Health {
         name: "nyxbid-server",
         version: env!("CARGO_PKG_VERSION"),
         status: "ok",
+        solana_configured: s.solana.is_some(),
+        program_id: s.solana.as_ref().map(|x| x.program_id.to_string()),
+        indexer: s.indexer_metrics.as_ref().map(|m| m.snapshot()),
     })
 }
 

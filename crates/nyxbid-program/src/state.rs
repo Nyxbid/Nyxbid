@@ -6,6 +6,7 @@
 //! (including the 8-byte discriminator prefix) with `try_decode`.
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Deserialize, Serialize};
 use solana_pubkey::Pubkey;
 
 use crate::{discriminator, AnchorAccount};
@@ -14,7 +15,7 @@ use crate::{discriminator, AnchorAccount};
 pub const PRICE_SCALE: u64 = 1_000_000;
 
 /// `Intent` account.
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Intent {
     pub taker: Pubkey,
     pub side: u8,
@@ -38,7 +39,7 @@ impl AnchorAccount for Intent {
 }
 
 /// `Quote` account.
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Quote {
     pub intent: Pubkey,
     pub maker: Pubkey,
@@ -56,7 +57,7 @@ impl AnchorAccount for Quote {
 }
 
 /// `Escrow` account.
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Escrow {
     pub intent: Pubkey,
     pub taker_amount: u64,
@@ -75,7 +76,7 @@ impl AnchorAccount for Escrow {
 }
 
 /// Permanent on-chain fill record. Created on `settle` and never closed.
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Receipt {
     pub intent: Pubkey,
     pub taker: Pubkey,
@@ -93,7 +94,7 @@ impl AnchorAccount for Receipt {
 }
 
 /// Per-maker reputation counters.
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Reputation {
     pub maker: Pubkey,
     pub quotes_submitted: u64,

@@ -9,11 +9,12 @@
 //! `Program data: ` prefix.
 
 use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Deserialize, Serialize};
 use solana_pubkey::Pubkey;
 
 use crate::{discriminator, AnchorEvent};
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct IntentCreated {
     pub intent: Pubkey,
     pub taker: Pubkey,
@@ -27,7 +28,7 @@ impl AnchorEvent for IntentCreated {
     const DISCRIMINATOR: [u8; 8] = discriminator::event::INTENT_CREATED;
 }
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct QuoteSubmitted {
     pub intent: Pubkey,
     pub quote: Pubkey,
@@ -38,7 +39,7 @@ impl AnchorEvent for QuoteSubmitted {
     const DISCRIMINATOR: [u8; 8] = discriminator::event::QUOTE_SUBMITTED;
 }
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct QuoteRevealed {
     pub intent: Pubkey,
     pub quote: Pubkey,
@@ -53,7 +54,7 @@ impl AnchorEvent for QuoteRevealed {
     const DISCRIMINATOR: [u8; 8] = discriminator::event::QUOTE_REVEALED;
 }
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct AuctionResolved {
     pub intent: Pubkey,
     pub winning_quote: Pubkey,
@@ -65,7 +66,7 @@ impl AnchorEvent for AuctionResolved {
     const DISCRIMINATOR: [u8; 8] = discriminator::event::AUCTION_RESOLVED;
 }
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Settled {
     pub intent: Pubkey,
     pub receipt: Pubkey,
@@ -79,7 +80,7 @@ impl AnchorEvent for Settled {
     const DISCRIMINATOR: [u8; 8] = discriminator::event::SETTLED;
 }
 
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Cancelled {
     pub intent: Pubkey,
     pub reason: u8,

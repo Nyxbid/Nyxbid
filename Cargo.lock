@@ -2250,6 +2250,7 @@ name = "nyxbid-program"
 version = "0.1.0"
 dependencies = [
  "borsh",
+ "serde",
  "serde_json",
  "solana-pubkey 3.0.0",
  "thiserror 1.0.69",

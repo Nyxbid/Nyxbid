@@ -1,4 +1,5 @@
 mod auction;
+mod indexer;
 mod intent;
 mod routes;
 mod solana;
@@ -12,6 +13,7 @@ use tokio::sync::{broadcast, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
+use crate::indexer::ChainEvent;
 use crate::state::{AppState, SharedState, StreamEvent};
 
 #[tokio::main]
@@ -24,12 +26,33 @@ async fn main() {
 
     let sol = solana::SolanaClient::from_env();
     if sol.is_none() {
-        tracing::warn!("solana client not configured — settlement broadcast disabled");
+        tracing::warn!(
+            "solana client not configured \u{2014} on-chain tx prep + indexer disabled \
+             (set SOLANA_RPC_URL to enable)"
+        );
     }
 
+    // Two broadcast channels: legacy DTO events (going away in commit 7)
+    // and chain-decoded events fed by the indexer.
     let (tx, _) = broadcast::channel::<StreamEvent>(128);
+    let (chain_tx, _) = broadcast::channel::<ChainEvent>(1024);
 
-    let state: SharedState = Arc::new(RwLock::new(AppState::seed(sol, tx)));
+    // Spawn the program-log indexer if we have a configured RPC. The
+    // task lives for the lifetime of the process and reconnects on
+    // disconnect.
+    let indexer_metrics = sol.as_ref().map(|s| {
+        let (metrics, _join) = indexer::spawn(s.clone(), chain_tx.clone());
+        // We deliberately ignore the JoinHandle: the task should outlive
+        // any single request and the runtime will cancel it on shutdown.
+        metrics
+    });
+
+    let state: SharedState = Arc::new(RwLock::new(AppState::seed(
+        sol,
+        tx,
+        chain_tx,
+        indexer_metrics,
+    )));
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
