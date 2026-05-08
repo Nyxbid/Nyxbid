@@ -424,7 +424,332 @@ pub async fn build_fund_maker_escrow(
     .await
 }
 
+// ---- settle --------------------------------------------------------
+
+/// `POST /api/tx/settle` body. Anyone can pay rent for the receipt and
+/// drive the settlement, so `payer` is decoupled from `taker`.
+#[derive(Clone, Debug, Deserialize)]
+pub struct SettleRequest {
+    pub payer: String,
+    pub intent: String,
+}
+
+pub async fn build_settle(
+    sol: &SolanaClient,
+    req: SettleRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    let payer = parse_pk("payer", &req.payer)?;
+    let intent_pk = parse_pk("intent", &req.intent)?;
+
+    // We need: Intent (taker, side, mints, winning_quote, winning_price,
+    // size, limit_price), Escrow (taker_amount + cached vault bumps),
+    // Quote (maker pubkey).
+    let intent_acc = require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
+    let (escrow_pda, _) = np::pda::escrow(&intent_pk);
+    let escrow_acc =
+        require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
+    let winning_quote_pk = intent_acc.winning_quote;
+    let quote_acc =
+        require_account::<np::state::Quote>(sol, &winning_quote_pk, "winning_quote").await?;
+    let maker = quote_acc.maker;
+
+    // ATA-resolved destinations. The chain only checks owner + mint, so
+    // ATAs are the right default.
+    let maker_destination_ata = np::pda::associated_token(&maker, &escrow_acc.taker_mint).0;
+    let taker_destination_ata =
+        np::pda::associated_token(&intent_acc.taker, &escrow_acc.maker_mint).0;
+
+    // Buy-side price-improvement refund: taker_paid is recomputed from
+    // the executed price; any overpay (in escrow.taker_mint) is sent to
+    // the taker's ATA on that mint. Sell-side has no refund.
+    let needs_refund = if intent_acc.side == np::params::side::BUY {
+        let filled_price = quote_acc.revealed_price;
+        let filled_size = quote_acc.revealed_size;
+        let taker_paid = mul_div(filled_size, filled_price, np::state::PRICE_SCALE)
+            .ok_or(TxBuildError::ZeroValue)?; // overflow surfaces as a generic err
+        taker_paid < escrow_acc.taker_amount
+    } else {
+        false
+    };
+    let taker_refund_destination_ata = if needs_refund {
+        np::pda::associated_token(&intent_acc.taker, &escrow_acc.taker_mint).0
+    } else {
+        // Anchor optional sentinel: passing the program ID at the slot
+        // resolves to None server-side.
+        np::id::PROGRAM
+    };
+
+    let (receipt_pda, _) = np::pda::receipt(&intent_pk);
+    let (reputation_pda, _) = np::pda::reputation(&maker);
+    let taker_vault_pda = np::pda::taker_vault(&intent_pk).0;
+    let maker_vault_pda = np::pda::maker_vault(&intent_pk).0;
+
+    let data = np::params::encode_empty_ix_data(np::discriminator::ix::SETTLE);
+
+    // Account order MUST match `Settle` in
+    // chain/programs/nyxbid/src/instructions/settle.rs.
+    let metas = vec![
+        AccountMeta::new(payer, true),                              // payer (signer, mut)
+        AccountMeta::new(intent_pk, false),                         // intent (mut)
+        AccountMeta::new_readonly(winning_quote_pk, false),         // winning_quote
+        AccountMeta::new(escrow_pda, false),                        // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),                   // taker_vault (mut)
+        AccountMeta::new(maker_vault_pda, false),                   // maker_vault (mut)
+        AccountMeta::new(maker_destination_ata, false),             // maker_destination
+        AccountMeta::new(taker_destination_ata, false),             // taker_destination
+        AccountMeta::new(taker_refund_destination_ata, false),      // optional refund
+        AccountMeta::new(intent_acc.taker, false),                  // taker_rent_beneficiary
+        AccountMeta::new(maker, false),                             // maker_rent_beneficiary
+        AccountMeta::new(receipt_pda, false),                       // receipt (init)
+        AccountMeta::new(reputation_pda, false),                    // reputation (mut)
+        AccountMeta::new_readonly(intent_acc.base_mint, false),     // base_mint
+        AccountMeta::new_readonly(intent_acc.quote_mint, false),    // quote_mint
+        AccountMeta::new_readonly(np::id::TOKEN, false),            // token_program
+        AccountMeta::new_readonly(np::id::SYSTEM, false),           // system_program
+    ];
+
+    finalize_tx(
+        sol,
+        &payer,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            receipt: Some(receipt_pda.to_string()),
+            escrow: Some(escrow_pda.to_string()),
+            taker_vault: Some(taker_vault_pda.to_string()),
+            maker_vault: Some(maker_vault_pda.to_string()),
+            quote: Some(winning_quote_pk.to_string()),
+            reputation: Some(reputation_pda.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+}
+
+// ---- cancel --------------------------------------------------------
+
+/// `POST /api/tx/cancel` body.
+#[derive(Clone, Debug, Deserialize)]
+pub struct CancelRequest {
+    pub taker: String,
+    pub intent: String,
+}
+
+pub async fn build_cancel(
+    sol: &SolanaClient,
+    req: CancelRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    let taker = parse_pk("taker", &req.taker)?;
+    let intent_pk = parse_pk("intent", &req.intent)?;
+
+    let escrow_acc_pda = np::pda::escrow(&intent_pk).0;
+    let escrow = require_account::<np::state::Escrow>(sol, &escrow_acc_pda, "escrow").await?;
+    let taker_vault_pda = np::pda::taker_vault(&intent_pk).0;
+    let taker_destination_ata = np::pda::associated_token(&taker, &escrow.taker_mint).0;
+
+    let data = np::params::encode_empty_ix_data(np::discriminator::ix::CANCEL);
+
+    // Account order MUST match `Cancel` in
+    // chain/programs/nyxbid/src/instructions/cancel.rs.
+    let metas = vec![
+        AccountMeta::new(taker, true),                       // taker (signer, mut)
+        AccountMeta::new(intent_pk, false),                  // intent (mut)
+        AccountMeta::new(escrow_acc_pda, false),             // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),            // taker_vault (mut)
+        AccountMeta::new(taker_destination_ata, false),      // taker_destination
+        AccountMeta::new_readonly(np::id::TOKEN, false),     // token_program
+    ];
+
+    finalize_tx(
+        sol,
+        &taker,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            escrow: Some(escrow_acc_pda.to_string()),
+            taker_vault: Some(taker_vault_pda.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+}
+
+// ---- expire_with_maker --------------------------------------------
+
+/// `POST /api/tx/expire_with_maker` body. Permissionless after the
+/// settle deadline if the winning maker funded but never settled.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ExpireWithMakerRequest {
+    pub payer: String,
+    pub intent: String,
+}
+
+pub async fn build_expire_with_maker(
+    sol: &SolanaClient,
+    req: ExpireWithMakerRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    let payer = parse_pk("payer", &req.payer)?;
+    let intent_pk = parse_pk("intent", &req.intent)?;
+
+    let intent_acc =
+        require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
+    let escrow_pda = np::pda::escrow(&intent_pk).0;
+    let escrow_acc =
+        require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
+    let maker = escrow_acc.maker;
+
+    let taker_vault_pda = np::pda::taker_vault(&intent_pk).0;
+    let maker_vault_pda = np::pda::maker_vault(&intent_pk).0;
+    let taker_destination_ata =
+        np::pda::associated_token(&intent_acc.taker, &escrow_acc.taker_mint).0;
+    let maker_destination_ata =
+        np::pda::associated_token(&maker, &escrow_acc.maker_mint).0;
+    let reputation_pda = np::pda::reputation(&maker).0;
+
+    let data = np::params::encode_empty_ix_data(np::discriminator::ix::EXPIRE_WITH_MAKER);
+
+    // Account order MUST match `ExpireWithMaker` in
+    // chain/programs/nyxbid/src/instructions/expire_with_maker.rs.
+    let metas = vec![
+        AccountMeta::new(payer, true),                          // payer (signer, mut)
+        AccountMeta::new(intent_pk, false),                     // intent (mut)
+        AccountMeta::new(escrow_pda, false),                    // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),               // taker_vault (mut)
+        AccountMeta::new(taker_destination_ata, false),         // taker_destination
+        AccountMeta::new(intent_acc.taker, false),              // taker_rent_beneficiary
+        AccountMeta::new(maker_vault_pda, false),               // maker_vault (mut)
+        AccountMeta::new(maker_destination_ata, false),         // maker_destination
+        AccountMeta::new(maker, false),                         // maker_rent_beneficiary
+        AccountMeta::new(reputation_pda, false),                // reputation (mut)
+        AccountMeta::new_readonly(np::id::TOKEN, false),        // token_program
+    ];
+
+    finalize_tx(
+        sol,
+        &payer,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            escrow: Some(escrow_pda.to_string()),
+            taker_vault: Some(taker_vault_pda.to_string()),
+            maker_vault: Some(maker_vault_pda.to_string()),
+            reputation: Some(reputation_pda.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+}
+
+// ---- expire_no_maker -----------------------------------------------
+
+/// `POST /api/tx/expire_no_maker` body. Permissionless after the
+/// settle deadline when no maker ever funded the escrow. Refunds the
+/// taker leg; if a winner was selected by reveal but never funded, also
+/// bumps that maker's `failed_reveals` counter.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ExpireNoMakerRequest {
+    pub payer: String,
+    pub intent: String,
+}
+
+pub async fn build_expire_no_maker(
+    sol: &SolanaClient,
+    req: ExpireNoMakerRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    let payer = parse_pk("payer", &req.payer)?;
+    let intent_pk = parse_pk("intent", &req.intent)?;
+
+    let intent_acc =
+        require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
+    let escrow_pda = np::pda::escrow(&intent_pk).0;
+    let escrow_acc =
+        require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
+    let taker_vault_pda = np::pda::taker_vault(&intent_pk).0;
+    let taker_destination_ata =
+        np::pda::associated_token(&intent_acc.taker, &escrow_acc.taker_mint).0;
+
+    // Optional accounts: present only when a winner was selected during
+    // reveal but never funded. We pass program_id as the Anchor "None"
+    // sentinel for the not-present case.
+    let has_winner = intent_acc.winning_quote != Pubkey::default();
+    let (winning_quote_meta_key, winning_reputation_meta_key) = if has_winner {
+        let q = require_account::<np::state::Quote>(
+            sol,
+            &intent_acc.winning_quote,
+            "winning_quote",
+        )
+        .await?;
+        let rep = np::pda::reputation(&q.maker).0;
+        (intent_acc.winning_quote, rep)
+    } else {
+        (np::id::PROGRAM, np::id::PROGRAM)
+    };
+
+    let data = np::params::encode_empty_ix_data(np::discriminator::ix::EXPIRE_NO_MAKER);
+
+    // Account order MUST match `ExpireNoMaker` in
+    // chain/programs/nyxbid/src/instructions/expire_no_maker.rs.
+    let metas = vec![
+        AccountMeta::new(payer, true),                          // payer (signer, mut)
+        AccountMeta::new(intent_pk, false),                     // intent (mut)
+        AccountMeta::new(escrow_pda, false),                    // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),               // taker_vault (mut)
+        AccountMeta::new(taker_destination_ata, false),         // taker_destination
+        AccountMeta::new(intent_acc.taker, false),              // taker_rent_beneficiary
+        AccountMeta::new_readonly(winning_quote_meta_key, false), // winning_quote (Option)
+        AccountMeta::new(winning_reputation_meta_key, false),   // winning_maker_reputation (Option)
+        AccountMeta::new_readonly(np::id::TOKEN, false),        // token_program
+    ];
+
+    finalize_tx(
+        sol,
+        &payer,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            escrow: Some(escrow_pda.to_string()),
+            taker_vault: Some(taker_vault_pda.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+}
+
 // ---- helpers -------------------------------------------------------
+
+/// Fetch + decode an Anchor account, surfacing a 400-style error if the
+/// account does not exist on chain.
+async fn require_account<T: np::AnchorAccount>(
+    sol: &SolanaClient,
+    pk: &Pubkey,
+    field: &'static str,
+) -> Result<T, TxBuildError> {
+    sol.get_anchor_account::<T>(pk)
+        .await?
+        .ok_or_else(|| TxBuildError::BadPubkey {
+            field,
+            error: format!("account {pk} not found on chain"),
+        })
+}
+
+/// Saturating-safe `(a * b) / scale` in u128.
+fn mul_div(a: u64, b: u64, scale: u64) -> Option<u64> {
+    let n = (a as u128).checked_mul(b as u128)?;
+    let n = n.checked_div(scale as u128)?;
+    u64::try_from(n).ok()
+}
 
 /// Pull the latest blockhash, build the unsigned `Transaction`, and
 /// serialise it for the wire. Shared by every builder above.

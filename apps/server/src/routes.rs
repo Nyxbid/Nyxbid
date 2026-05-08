@@ -16,8 +16,9 @@ use crate::{
     intent,
     state::SharedState,
     tx::{
-        self, CreateIntentRequest, FundMakerEscrowRequest, PreparedTx, RevealQuoteRequest,
-        SubmitQuoteRequest, TxBuildError,
+        self, CancelRequest, CreateIntentRequest, ExpireNoMakerRequest,
+        ExpireWithMakerRequest, FundMakerEscrowRequest, PreparedTx, RevealQuoteRequest,
+        SettleRequest, SubmitQuoteRequest, TxBuildError,
     },
 };
 
@@ -34,6 +35,10 @@ pub fn router() -> Router<SharedState> {
         .route("/api/tx/submit_quote", post(prepare_submit_quote))
         .route("/api/tx/reveal_quote", post(prepare_reveal_quote))
         .route("/api/tx/fund_maker_escrow", post(prepare_fund_maker_escrow))
+        .route("/api/tx/settle", post(prepare_settle))
+        .route("/api/tx/cancel", post(prepare_cancel))
+        .route("/api/tx/expire_with_maker", post(prepare_expire_with_maker))
+        .route("/api/tx/expire_no_maker", post(prepare_expire_no_maker))
         .route("/api/events", get(events))
 }
 
@@ -179,6 +184,56 @@ async fn prepare_fund_maker_escrow(
         return Err(solana_unconfigured());
     };
     tx::build_fund_maker_escrow(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
+}
+
+async fn prepare_settle(
+    State(state): State<SharedState>,
+    Json(req): Json<SettleRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_settle(sol, req).await.map(Json).map_err(map_build_error)
+}
+
+async fn prepare_cancel(
+    State(state): State<SharedState>,
+    Json(req): Json<CancelRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_cancel(sol, req).await.map(Json).map_err(map_build_error)
+}
+
+async fn prepare_expire_with_maker(
+    State(state): State<SharedState>,
+    Json(req): Json<ExpireWithMakerRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_expire_with_maker(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
+}
+
+async fn prepare_expire_no_maker(
+    State(state): State<SharedState>,
+    Json(req): Json<ExpireNoMakerRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_expire_no_maker(sol, req)
         .await
         .map(Json)
         .map_err(map_build_error)
