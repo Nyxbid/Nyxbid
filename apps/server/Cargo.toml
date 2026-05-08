@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = "0.8"
+base64 = "0.22"
 bincode = "1.3"
 borsh = "1.6.1"
 bs58 = "0.5.1"
@@ -24,6 +25,7 @@ solana-commitment-config = "3"
 solana-hash = "3"
 solana-instruction = { version = "3", features = ["serde", "borsh", "bincode"] }
 solana-keypair = { version = "3", features = ["seed-derivable"] }
+solana-message = { version = "3", features = ["serde", "bincode"] }
 solana-pubkey = { version = "3", features = ["serde", "borsh"] }
 solana-signature = { version = "3", features = ["serde"] }
 solana-system-interface = "3"

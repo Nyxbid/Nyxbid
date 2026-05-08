@@ -12,7 +12,11 @@ use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 use nyxbid_types::{DashboardStats, Fill, Intent, Market, Quote};
 
-use crate::{intent, state::SharedState};
+use crate::{
+    intent,
+    state::SharedState,
+    tx::{self, CreateIntentRequest, PreparedTx, TxBuildError},
+};
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -23,6 +27,7 @@ pub fn router() -> Router<SharedState> {
         .route("/api/intents/{id}", get(get_intent))
         .route("/api/intents/{id}/quotes", get(list_quotes_for_intent))
         .route("/api/fills", get(list_fills))
+        .route("/api/tx/create_intent", post(prepare_create_intent))
         .route("/api/events", get(events))
 }
 
@@ -112,6 +117,53 @@ async fn create_intent(
     s.intents.push(new_intent.clone());
     let _ = s.tx.send(crate::state::StreamEvent::IntentCreated(new_intent.clone()));
     (StatusCode::CREATED, Json(new_intent))
+}
+
+/// Build (but do not sign) a `create_intent` transaction. Phase 2 entry
+/// point for the wallet flow: client posts intent params, server returns
+/// a base64 legacy `Transaction` for the wallet to sign and broadcast.
+async fn prepare_create_intent(
+    State(state): State<SharedState>,
+    Json(req): Json<CreateIntentRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "solana_unconfigured",
+                "message": "set SOLANA_RPC_URL to enable on-chain tx prep"
+            })),
+        ));
+    };
+    match tx::build_create_intent(sol, req).await {
+        Ok(prep) => Ok(Json(prep)),
+        Err(e) => Err(map_build_error(e)),
+    }
+}
+
+/// Map [`TxBuildError`] onto an HTTP status + structured body. User
+/// input issues become 4xx; RPC issues become 5xx.
+fn map_build_error(err: TxBuildError) -> (StatusCode, Json<serde_json::Value>) {
+    let (status, kind) = match &err {
+        TxBuildError::BadPubkey { .. }
+        | TxBuildError::BadHex { .. }
+        | TxBuildError::WrongLength { .. }
+        | TxBuildError::BadSide
+        | TxBuildError::ZeroValue
+        | TxBuildError::BadDeadlines => (StatusCode::BAD_REQUEST, "bad_request"),
+        TxBuildError::Borsh(_) | TxBuildError::Bincode(_) => {
+            (StatusCode::INTERNAL_SERVER_ERROR, "encode_error")
+        }
+        TxBuildError::Solana(_) => (StatusCode::BAD_GATEWAY, "solana_error"),
+    };
+    (
+        status,
+        Json(serde_json::json!({
+            "error": kind,
+            "message": err.to_string(),
+        })),
+    )
 }
 
 async fn events(

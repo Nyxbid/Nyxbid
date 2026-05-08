@@ -3,6 +3,7 @@ mod intent;
 mod routes;
 mod solana;
 mod state;
+mod tx;
 
 use std::{net::SocketAddr, sync::Arc};
 
