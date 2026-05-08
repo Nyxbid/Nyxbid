@@ -262,6 +262,7 @@ impl SolanaClient {
 
     /// Block until `sig` reaches `target` or `timeout` elapses. Polls
     /// every 400ms (one Solana slot, roughly). Used by the tx tracker.
+    #[allow(dead_code)] // exposed for Phase 3/4 maker bots
     pub async fn await_status(
         &self,
         sig: &Signature,
@@ -288,17 +289,20 @@ impl SolanaClient {
     }
 
     /// Convenience: parse a base58 pubkey from the wire.
+    #[allow(dead_code)] // SDK-style helper, used by maker bots
     pub fn parse_pubkey(s: &str) -> Result<Pubkey, SolanaError> {
         Pubkey::from_str(s).map_err(|e| SolanaError::BadPubkey(e.to_string()))
     }
 
     /// Underlying client, exposed for power users (the indexer needs it
     /// to subscribe to logs over WebSocket).
+    #[allow(dead_code)]
     pub fn raw(&self) -> Arc<RpcClient> {
         Arc::clone(&self.rpc)
     }
 
     /// Optional helper for `getTransaction` calls used by the tx tracker.
+    #[allow(dead_code)] // used by the upcoming fill-detail route
     pub async fn get_transaction_meta(
         &self,
         sig: &Signature,
@@ -362,6 +366,7 @@ mod tests {
     }
 }
 
+#[allow(dead_code)] // referenced from await_status
 fn rank(s: TxStatus) -> u8 {
     match s {
         TxStatus::Pending => 0,
