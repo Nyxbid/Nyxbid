@@ -2246,6 +2246,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nyxbid-program"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "serde_json",
+ "solana-pubkey 3.0.0",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "nyxbid-server"
 version = "0.1.0"
 dependencies = [

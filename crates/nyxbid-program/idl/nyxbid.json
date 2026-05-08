@@ -1,0 +1,1866 @@
+{
+  "address": "E9sMPu6uUJTfe72ePWr8BNjEKejUnMqsdFV6rGtsHiX2",
+  "metadata": {
+    "name": "nyxbid",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Nyxbid: sealed-bid RFQ venue on Solana"
+  },
+  "instructions": [
+    {
+      "name": "cancel",
+      "discriminator": [
+        232,
+        219,
+        223,
+        41,
+        219,
+        236,
+        220,
+        190
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_destination",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_intent",
+      "discriminator": [
+        216,
+        214,
+        79,
+        121,
+        23,
+        194,
+        96,
+        104
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "taker_source",
+          "docs": [
+            "Source ATA the taker is locking from. Must hold the leg dictated by `side`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_vault",
+          "docs": [
+            "PDA-owned vault holding the taker's locked tokens until settle/refund."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_lock_mint",
+          "docs": [
+            "The mint actually being locked. Must match base_mint for sells,",
+            "quote_mint for buys. Verified in handler."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "CreateIntentParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "expire_no_maker",
+      "discriminator": [
+        186,
+        90,
+        4,
+        217,
+        150,
+        158,
+        152,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_destination",
+          "writable": true
+        },
+        {
+          "name": "taker_rent_beneficiary",
+          "writable": true
+        },
+        {
+          "name": "winning_quote",
+          "docs": [
+            "Optional. MUST be present when `intent.winning_quote != default`.",
+            "MUST equal `intent.winning_quote` if present."
+          ],
+          "optional": true
+        },
+        {
+          "name": "winning_maker_reputation",
+          "docs": [
+            "Optional. MUST be present when `intent.winning_quote != default`.",
+            "MUST be the Reputation PDA for `winning_quote.maker`."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_with_maker",
+      "discriminator": [
+        117,
+        107,
+        110,
+        137,
+        83,
+        239,
+        240,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_destination",
+          "writable": true
+        },
+        {
+          "name": "taker_rent_beneficiary",
+          "writable": true
+        },
+        {
+          "name": "maker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker_destination",
+          "writable": true
+        },
+        {
+          "name": "maker_rent_beneficiary",
+          "writable": true
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.maker",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "fund_maker_escrow",
+      "discriminator": [
+        118,
+        138,
+        216,
+        100,
+        167,
+        54,
+        223,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "quote",
+          "docs": [
+            "The currently winning quote. Must equal intent.winning_quote and",
+            "must belong to `maker`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker_lock_mint",
+          "docs": [
+            "The mint the maker delivers. Buy intent => base_mint; sell => quote_mint."
+          ]
+        },
+        {
+          "name": "maker_source",
+          "writable": true
+        },
+        {
+          "name": "maker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "FundMakerEscrowParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "reveal_quote",
+      "discriminator": [
+        78,
+        23,
+        168,
+        150,
+        128,
+        0,
+        61,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "quote",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RevealQuoteParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "winning_quote"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "taker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  107,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker_destination",
+          "docs": [
+            "Maker's destination for the leg the taker locked."
+          ],
+          "writable": true
+        },
+        {
+          "name": "taker_destination",
+          "docs": [
+            "Taker's destination for the leg the maker locked."
+          ],
+          "writable": true
+        },
+        {
+          "name": "taker_refund_destination",
+          "docs": [
+            "Optional. Required on buy intents when the revealed price beats",
+            "the limit, so the taker's overpay can be refunded. Same mint as",
+            "the locked leg (escrow.taker_mint), owned by intent.taker.",
+            "On sell intents and on buy intents with no price improvement,",
+            "pass `None`."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "taker_rent_beneficiary",
+          "writable": true
+        },
+        {
+          "name": "maker_rent_beneficiary",
+          "writable": true
+        },
+        {
+          "name": "receipt",
+          "docs": [
+            "Permanent on-chain fill record. Not closed at settle (or anywhere",
+            "else in Phase 1) - see Receipt doc comment in state.rs for the",
+            "rationale."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  99,
+                  101,
+                  105,
+                  112,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "intent"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reputation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "winning_quote.maker",
+                "account": "Quote"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_mint",
+          "docs": [
+            "Sanity-check the mints are still the same as recorded."
+          ]
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_quote",
+      "discriminator": [
+        230,
+        121,
+        122,
+        202,
+        228,
+        6,
+        91,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "intent",
+          "writable": true
+        },
+        {
+          "name": "quote",
+          "writable": true
+        },
+        {
+          "name": "reputation",
+          "docs": [
+            "Per-maker reputation. Created the first time a maker submits a quote."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  117,
+                  116,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SubmitQuoteParams"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Escrow",
+      "discriminator": [
+        31,
+        213,
+        123,
+        187,
+        186,
+        22,
+        218,
+        155
+      ]
+    },
+    {
+      "name": "Intent",
+      "discriminator": [
+        247,
+        162,
+        35,
+        165,
+        254,
+        111,
+        129,
+        109
+      ]
+    },
+    {
+      "name": "Quote",
+      "discriminator": [
+        167,
+        202,
+        20,
+        198,
+        228,
+        66,
+        105,
+        208
+      ]
+    },
+    {
+      "name": "Receipt",
+      "discriminator": [
+        39,
+        154,
+        73,
+        106,
+        80,
+        102,
+        145,
+        153
+      ]
+    },
+    {
+      "name": "Reputation",
+      "discriminator": [
+        55,
+        148,
+        90,
+        71,
+        68,
+        183,
+        193,
+        28
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AuctionResolved",
+      "discriminator": [
+        135,
+        86,
+        129,
+        72,
+        80,
+        120,
+        12,
+        248
+      ]
+    },
+    {
+      "name": "Cancelled",
+      "discriminator": [
+        136,
+        23,
+        42,
+        65,
+        143,
+        233,
+        234,
+        46
+      ]
+    },
+    {
+      "name": "IntentCreated",
+      "discriminator": [
+        184,
+        46,
+        156,
+        205,
+        169,
+        254,
+        11,
+        108
+      ]
+    },
+    {
+      "name": "QuoteRevealed",
+      "discriminator": [
+        157,
+        221,
+        161,
+        57,
+        82,
+        192,
+        26,
+        200
+      ]
+    },
+    {
+      "name": "QuoteSubmitted",
+      "discriminator": [
+        207,
+        98,
+        251,
+        106,
+        249,
+        124,
+        126,
+        40
+      ]
+    },
+    {
+      "name": "Settled",
+      "discriminator": [
+        232,
+        210,
+        40,
+        17,
+        142,
+        124,
+        145,
+        238
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "IntentNotOpen",
+      "msg": "intent is not open"
+    },
+    {
+      "code": 6001,
+      "name": "IntentNotResolved",
+      "msg": "intent is not resolved"
+    },
+    {
+      "code": 6002,
+      "name": "RevealDeadlineNotReached",
+      "msg": "reveal deadline has not passed"
+    },
+    {
+      "code": 6003,
+      "name": "RevealDeadlinePassed",
+      "msg": "reveal deadline has passed"
+    },
+    {
+      "code": 6004,
+      "name": "ResolveDeadlineNotReached",
+      "msg": "resolve deadline has not passed"
+    },
+    {
+      "code": 6005,
+      "name": "ResolveDeadlinePassed",
+      "msg": "resolve deadline has passed"
+    },
+    {
+      "code": 6006,
+      "name": "CommitmentMismatch",
+      "msg": "quote commitment does not match revealed price"
+    },
+    {
+      "code": 6007,
+      "name": "AlreadyRevealed",
+      "msg": "quote already revealed"
+    },
+    {
+      "code": 6008,
+      "name": "LimitBreached",
+      "msg": "price breaches taker limit"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientDeposit",
+      "msg": "insufficient escrow deposit"
+    },
+    {
+      "code": 6010,
+      "name": "AlreadySettled",
+      "msg": "escrow already settled"
+    },
+    {
+      "code": 6011,
+      "name": "Unauthorized",
+      "msg": "unauthorized"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidSide",
+      "msg": "invalid side discriminator"
+    },
+    {
+      "code": 6013,
+      "name": "MathOverflow",
+      "msg": "math overflow"
+    },
+    {
+      "code": 6014,
+      "name": "ZeroAmount",
+      "msg": "zero amount"
+    },
+    {
+      "code": 6015,
+      "name": "WrongLockMint",
+      "msg": "wrong mint for the locked leg"
+    },
+    {
+      "code": 6016,
+      "name": "BadDeadlines",
+      "msg": "reveal deadline must precede resolve deadline"
+    },
+    {
+      "code": 6017,
+      "name": "SizeMismatch",
+      "msg": "revealed size does not match intent size"
+    },
+    {
+      "code": 6018,
+      "name": "MakerNotFunded",
+      "msg": "maker has not funded escrow"
+    },
+    {
+      "code": 6019,
+      "name": "MakerAlreadyFunded",
+      "msg": "maker already funded"
+    },
+    {
+      "code": 6020,
+      "name": "NotWinningMaker",
+      "msg": "caller is not the winning maker"
+    },
+    {
+      "code": 6021,
+      "name": "NotRevealed",
+      "msg": "quote has not been revealed"
+    },
+    {
+      "code": 6022,
+      "name": "SettleDeadlinePassed",
+      "msg": "settle deadline has passed"
+    },
+    {
+      "code": 6023,
+      "name": "SettleDeadlineNotReached",
+      "msg": "settle deadline has not passed"
+    },
+    {
+      "code": 6024,
+      "name": "WrongFundAmount",
+      "msg": "fund amount does not match revealed notional"
+    },
+    {
+      "code": 6025,
+      "name": "MissingWinnerAccounts",
+      "msg": "expire_no_maker requires winning_quote and reputation accounts when a winner exists"
+    },
+    {
+      "code": 6026,
+      "name": "UnexpectedWinnerAccounts",
+      "msg": "winner accounts must not be passed when no winning quote was selected"
+    },
+    {
+      "code": 6027,
+      "name": "SubmitWindowTooShort",
+      "msg": "reveal deadline must be in the future and leave a minimum submit window"
+    },
+    {
+      "code": 6028,
+      "name": "MissingRefundDestination",
+      "msg": "buy-side settle requires taker_refund_destination when filled_price < limit_price"
+    }
+  ],
+  "types": [
+    {
+      "name": "AuctionResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "winning_quote",
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_price",
+            "type": "u64"
+          },
+          {
+            "name": "filled_size",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Cancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "reason",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateIntentParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "size",
+            "type": "u64"
+          },
+          {
+            "name": "limit_price",
+            "type": "u64"
+          },
+          {
+            "name": "reveal_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "resolve_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "settle_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "commitment_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Escrow",
+      "docs": [
+        "Per-intent escrow record. Owns two vault token accounts:",
+        "- taker_vault: holds the leg the taker locked at create_intent.",
+        "- maker_vault: holds the leg the winning maker locked before reveal.",
+        "Settle drains both vaults atomically and closes them."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker_amount",
+            "type": "u64"
+          },
+          {
+            "name": "taker_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker_amount",
+            "type": "u64"
+          },
+          {
+            "name": "maker_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "taker_vault_bump",
+            "docs": [
+              "Cached PDA bump for the taker_vault token account so later",
+              "instructions can pass `bump = escrow.taker_vault_bump` and skip",
+              "the ~1500 CU find_program_address re-derivation."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "maker_vault_bump",
+            "docs": [
+              "Same for maker_vault. Set during fund_maker_escrow; remains 0",
+              "until the winning maker funds."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundMakerEscrowParams",
+      "docs": [
+        "The winning maker locks the opposite leg of the trade into a",
+        "PDA-owned vault, after the auction's reveal window has selected them.",
+        "",
+        "Lifecycle (Phase 1):",
+        "1. create_intent: taker locks their leg in taker_vault.",
+        "2. submit_quote: makers post sealed commitments (no funding).",
+        "3. reveal_quote (during the reveal window): each maker reveals.",
+        "The program keeps the best valid revealed quote in",
+        "intent.winning_quote (lowest price for buy / highest for sell).",
+        "4. After resolve_deadline the winner is final.",
+        "5. fund_maker_escrow (this instruction): only the maker pointed to",
+        "by intent.winning_quote can call this, and only between",
+        "resolve_deadline and settle_deadline. The amount and mint must",
+        "match what the revealed price implies.",
+        "6. settle: dual CPI atomic swap.",
+        "",
+        "Single maker_vault per intent is intentional: the auction selects one",
+        "winner, and only that winner ever needs to lock capital. Losing",
+        "makers never tied up funds.",
+        "",
+        "Side effects on the first successful call:",
+        "- intent.status -> Resolved.",
+        "- reputation.quotes_won += 1.",
+        "- AuctionResolved event emitted (preserves event compatibility with",
+        "downstream indexers that watched the old resolve_auction ix)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "docs": [
+              "Amount of `maker_lock_mint` to lock. Must equal the notional",
+              "implied by intent.winning_price and intent.size for the side."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Intent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "size",
+            "type": "u64"
+          },
+          {
+            "name": "limit_price",
+            "type": "u64"
+          },
+          {
+            "name": "reveal_deadline",
+            "docs": [
+              "Submit window: clients can submit sealed quotes while",
+              "`clock < reveal_deadline`."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "resolve_deadline",
+            "docs": [
+              "Reveal window: makers can reveal between `reveal_deadline` and",
+              "`resolve_deadline`. Each valid reveal can replace the current",
+              "winner if it improves the price."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "settle_deadline",
+            "docs": [
+              "Settle window: after `resolve_deadline` the winner is final and",
+              "must fund + settle before `settle_deadline`. After that, the",
+              "taker can expire and recover their funds (and the would-be",
+              "winner takes a `failed_reveals` reputation hit)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "commitment_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "winning_quote",
+            "docs": [
+              "Best valid revealed quote so far. Default Pubkey if no maker has",
+              "successfully revealed."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "winning_price",
+            "docs": [
+              "Best price revealed so far, in PRICE_SCALE units. Cached on the",
+              "Intent so reveal_quote can compare without deserializing the",
+              "previous winning quote account."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Cached PDA bumps for cheap signer-seeds derivation later."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "escrow_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IntentCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "size",
+            "type": "u64"
+          },
+          {
+            "name": "limit_price",
+            "type": "u64"
+          },
+          {
+            "name": "reveal_deadline",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Quote",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "revealed_price",
+            "type": "u64"
+          },
+          {
+            "name": "revealed_size",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "revealed",
+            "type": "bool"
+          },
+          {
+            "name": "maker_funded",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuoteRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "revealed_price",
+            "type": "u64"
+          },
+          {
+            "name": "revealed_size",
+            "type": "u64"
+          },
+          {
+            "name": "is_best",
+            "docs": [
+              "True if this reveal made the quote the current best bid."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "QuoteSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Receipt",
+      "docs": [
+        "On-chain proof of a settled fill. Intentionally permanent: indexers,",
+        "dispute resolution, and the public `/fills` UI all rely on this PDA",
+        "remaining queryable indefinitely. The ~0.0015 SOL of rent per settle",
+        "is the storage cost of that proof and is paid by the settle `payer`",
+        "(typically the taker, but anyone can settle).",
+        "",
+        "If the per-trade rent ever becomes a concern, a permissionless",
+        "`close_receipt` instruction with a long delay (e.g. 90 days,",
+        "post-indexing) could reclaim it. Out of scope for Phase 1."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "filled_size",
+            "type": "u64"
+          },
+          {
+            "name": "filled_price",
+            "type": "u64"
+          },
+          {
+            "name": "settled_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Reputation",
+      "docs": [
+        "Per-maker reputation. Phase 1 stores raw counters only.",
+        "Phase 3 will map A2A agent identities to this PDA and add scoring."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "quotes_submitted",
+            "type": "u64"
+          },
+          {
+            "name": "quotes_won",
+            "type": "u64"
+          },
+          {
+            "name": "settled_count",
+            "type": "u64"
+          },
+          {
+            "name": "failed_reveals",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RevealQuoteParams",
+      "docs": [
+        "One maker reveals their sealed quote during the reveal window.",
+        "",
+        "Lifecycle:",
+        "- allowed only while clock is in [reveal_deadline, resolve_deadline),",
+        "- caller must be the quote's maker,",
+        "- quote must not already be revealed,",
+        "- commitment hash must match (price, size, nonce),",
+        "- revealed_size must equal intent.size (no partial fills in Phase 1),",
+        "- revealed_price must clear the taker's limit.",
+        "",
+        "If the revealed quote improves on intent.winning_price (lower for buy,",
+        "higher for sell, or first valid reveal), the program updates",
+        "intent.winning_quote and intent.winning_price. Otherwise the reveal",
+        "is still recorded but the winner is unchanged.",
+        "",
+        "No funds move here. No reputation counter changes here either - the",
+        "quotes_won bump fires when the actual winner first calls",
+        "fund_maker_escrow after resolve_deadline."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "revealed_price",
+            "type": "u64"
+          },
+          {
+            "name": "revealed_size",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "intent",
+            "type": "pubkey"
+          },
+          {
+            "name": "receipt",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "filled_price",
+            "type": "u64"
+          },
+          {
+            "name": "filled_size",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SubmitQuoteParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nonce",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
