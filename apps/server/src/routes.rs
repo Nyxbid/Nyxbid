@@ -1,19 +1,27 @@
+//! HTTP surface. Read paths come from the chain-indexed [`Store`];
+//! write paths are pure tx-prep — the server returns an unsigned legacy
+//! `Transaction` for the wallet/agent to sign and broadcast.
+//!
+//! No route accepts user-supplied off-chain `Intent` data anymore; the
+//! old `POST /api/intents` (which seeded an in-memory fake) is gone.
+
+use std::convert::Infallible;
+
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{sse::Event, IntoResponse, Sse},
+    response::{sse::Event, Sse},
     routing::{get, post},
     Json, Router,
 };
 use futures_util::Stream;
 use serde::Serialize;
-use std::convert::Infallible;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 
 use nyxbid_types::{DashboardStats, Fill, Intent, Market, Quote};
 
 use crate::{
-    intent,
+    indexer::ChainEnvelope,
     state::SharedState,
     tx::{
         self, CancelRequest, CreateIntentRequest, ExpireNoMakerRequest,
@@ -27,7 +35,7 @@ pub fn router() -> Router<SharedState> {
         .route("/health", get(health))
         .route("/api/dashboard", get(dashboard))
         .route("/api/markets", get(list_markets))
-        .route("/api/intents", get(list_intents).post(create_intent))
+        .route("/api/intents", get(list_intents))
         .route("/api/intents/{id}", get(get_intent))
         .route("/api/intents/{id}/quotes", get(list_quotes_for_intent))
         .route("/api/fills", get(list_fills))
@@ -66,29 +74,8 @@ async fn health(State(state): State<SharedState>) -> Json<Health> {
 
 async fn dashboard(State(state): State<SharedState>) -> Json<DashboardStats> {
     let s = state.read().await;
-    let open = s
-        .intents
-        .iter()
-        .filter(|i| matches!(i.status, nyxbid_types::IntentStatus::Open))
-        .count() as u64;
-    let resolved = s
-        .intents
-        .iter()
-        .filter(|i| matches!(i.status, nyxbid_types::IntentStatus::Resolved))
-        .count() as u64;
-    let notional: u64 = s.fills.iter().map(|f| f.size * f.price / 1_000_000).sum();
-    let avg = if s.intents.is_empty() {
-        0.0
-    } else {
-        s.quotes.len() as f64 / s.intents.len() as f64
-    };
-    Json(DashboardStats {
-        open_intents: open,
-        resolved_intents: resolved,
-        total_fills: s.fills.len() as u64,
-        notional_24h: notional,
-        avg_makers_per_intent: avg,
-    })
+    let store = s.store.read().await;
+    Json(store.dashboard_stats())
 }
 
 async fn list_markets(State(state): State<SharedState>) -> Json<Vec<Market>> {
@@ -96,22 +83,18 @@ async fn list_markets(State(state): State<SharedState>) -> Json<Vec<Market>> {
 }
 
 async fn list_intents(State(state): State<SharedState>) -> Json<Vec<Intent>> {
-    Json(state.read().await.intents.clone())
+    let s = state.read().await;
+    let store = s.store.read().await;
+    Json(store.list_intents())
 }
 
 async fn get_intent(
     State(state): State<SharedState>,
     Path(id): Path<String>,
 ) -> Result<Json<Intent>, StatusCode> {
-    state
-        .read()
-        .await
-        .intents
-        .iter()
-        .find(|i| i.id == id)
-        .cloned()
-        .map(Json)
-        .ok_or(StatusCode::NOT_FOUND)
+    let s = state.read().await;
+    let store = s.store.read().await;
+    store.get_intent(&id).map(Json).ok_or(StatusCode::NOT_FOUND)
 }
 
 async fn list_quotes_for_intent(
@@ -119,27 +102,18 @@ async fn list_quotes_for_intent(
     Path(id): Path<String>,
 ) -> Json<Vec<Quote>> {
     let s = state.read().await;
-    Json(s.quotes.iter().filter(|q| q.intent_id == id).cloned().collect())
+    let store = s.store.read().await;
+    Json(store.list_quotes_for(&id))
 }
 
 async fn list_fills(State(state): State<SharedState>) -> Json<Vec<Fill>> {
-    Json(state.read().await.fills.clone())
+    let s = state.read().await;
+    let store = s.store.read().await;
+    Json(store.list_fills())
 }
 
-async fn create_intent(
-    State(state): State<SharedState>,
-    Json(req): Json<intent::CreateIntentRequest>,
-) -> impl IntoResponse {
-    let new_intent = intent::build_intent(req);
-    let mut s = state.write().await;
-    s.intents.push(new_intent.clone());
-    let _ = s.tx.send(crate::state::StreamEvent::IntentCreated(new_intent.clone()));
-    (StatusCode::CREATED, Json(new_intent))
-}
+// ---- tx-prep routes ----------------------------------------------------
 
-/// Build (but do not sign) a `create_intent` transaction. Phase 2 entry
-/// point for the wallet flow: client posts intent params, server returns
-/// a base64 legacy `Transaction` for the wallet to sign and broadcast.
 async fn prepare_create_intent(
     State(state): State<SharedState>,
     Json(req): Json<CreateIntentRequest>,
@@ -148,10 +122,10 @@ async fn prepare_create_intent(
     let Some(sol) = s.solana.as_ref() else {
         return Err(solana_unconfigured());
     };
-    match tx::build_create_intent(sol, req).await {
-        Ok(prep) => Ok(Json(prep)),
-        Err(e) => Err(map_build_error(e)),
-    }
+    tx::build_create_intent(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
 }
 
 async fn prepare_submit_quote(
@@ -204,7 +178,10 @@ async fn prepare_settle(
     let Some(sol) = s.solana.as_ref() else {
         return Err(solana_unconfigured());
     };
-    tx::build_settle(sol, req).await.map(Json).map_err(map_build_error)
+    tx::build_settle(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
 }
 
 async fn prepare_cancel(
@@ -215,7 +192,10 @@ async fn prepare_cancel(
     let Some(sol) = s.solana.as_ref() else {
         return Err(solana_unconfigured());
     };
-    tx::build_cancel(sol, req).await.map(Json).map_err(map_build_error)
+    tx::build_cancel(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
 }
 
 async fn prepare_expire_with_maker(
@@ -256,8 +236,6 @@ fn solana_unconfigured() -> (StatusCode, Json<serde_json::Value>) {
     )
 }
 
-/// Map [`TxBuildError`] onto an HTTP status + structured body. User
-/// input issues become 4xx; RPC issues become 5xx.
 fn map_build_error(err: TxBuildError) -> (StatusCode, Json<serde_json::Value>) {
     let (status, kind) = match &err {
         TxBuildError::BadPubkey { .. }
@@ -280,16 +258,18 @@ fn map_build_error(err: TxBuildError) -> (StatusCode, Json<serde_json::Value>) {
     )
 }
 
+/// SSE stream of decoded chain events. The full WebSocket is added in
+/// commit 8; SSE remains here as a no-build-step fallback for browsers
+/// and curl-based debugging.
 async fn events(
     State(state): State<SharedState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let rx = state.read().await.tx.subscribe();
+    let rx = state.read().await.chain_tx.subscribe();
     let stream = BroadcastStream::new(rx).filter_map(|res| {
-        res.ok().and_then(|ev| {
-            serde_json::to_string(&ev)
-                .ok()
-                .map(|s| Ok(Event::default().data(s)))
-        })
+        let env: ChainEnvelope = res.ok()?;
+        serde_json::to_string(&env)
+            .ok()
+            .map(|s| Ok(Event::default().data(s)))
     });
     Sse::new(stream)
 }

@@ -31,6 +31,19 @@ use tokio::sync::broadcast;
 
 use crate::solana::SolanaClient;
 
+/// Wraps a [`ChainEvent`] with the transaction context (signature +
+/// slot) so downstream consumers can link an event back to the on-chain
+/// transaction without re-fetching it.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChainEnvelope {
+    /// Transaction signature, base58.
+    pub signature: String,
+    /// Slot the transaction landed in.
+    pub slot: u64,
+    /// Decoded event payload.
+    pub event: ChainEvent,
+}
+
 /// Typed wire payload broadcast to every chain-event subscriber.
 ///
 /// `kind` is the event name in `lower_snake_case`, the rest of the
@@ -123,7 +136,7 @@ pub struct IndexerMetricsSnapshot {
 /// transport-level error with a 3s backoff.
 pub fn spawn(
     sol: SolanaClient,
-    chain_tx: broadcast::Sender<ChainEvent>,
+    chain_tx: broadcast::Sender<ChainEnvelope>,
 ) -> (Arc<IndexerMetrics>, tokio::task::JoinHandle<()>) {
     let metrics = Arc::new(IndexerMetrics::default());
     let m = Arc::clone(&metrics);
@@ -145,7 +158,7 @@ pub fn spawn(
 /// One subscription lifetime: connect, stream, return on disconnect/err.
 async fn run_subscription(
     sol: &SolanaClient,
-    chain_tx: &broadcast::Sender<ChainEvent>,
+    chain_tx: &broadcast::Sender<ChainEnvelope>,
     metrics: &IndexerMetrics,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing::info!(ws_url = %sol.ws_url, program = %sol.program_id, "indexer connecting");
@@ -158,6 +171,7 @@ async fn run_subscription(
     tracing::info!("indexer connected; streaming program logs");
 
     while let Some(resp) = stream.next().await {
+        let slot = resp.context.slot;
         let v = resp.value;
         if v.err.is_some() {
             metrics.failed_txs.fetch_add(1, Ordering::Relaxed);
@@ -178,10 +192,15 @@ async fn run_subscription(
             match ChainEvent::try_decode(&bytes) {
                 Some(ev) => {
                     metrics.events_decoded.fetch_add(1, Ordering::Relaxed);
-                    tracing::debug!(?ev, signature = %v.signature, "chain event");
+                    tracing::debug!(?ev, signature = %v.signature, slot, "chain event");
+                    let envelope = ChainEnvelope {
+                        signature: v.signature.clone(),
+                        slot,
+                        event: ev,
+                    };
                     // .send() is a no-op if there are zero subscribers,
                     // and that's fine — events are inherently fire-and-forget.
-                    let _ = chain_tx.send(ev);
+                    let _ = chain_tx.send(envelope);
                 }
                 None => {
                     metrics.events_skipped.fetch_add(1, Ordering::Relaxed);
