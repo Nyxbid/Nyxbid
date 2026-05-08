@@ -15,7 +15,10 @@ use nyxbid_types::{DashboardStats, Fill, Intent, Market, Quote};
 use crate::{
     intent,
     state::SharedState,
-    tx::{self, CreateIntentRequest, PreparedTx, TxBuildError},
+    tx::{
+        self, CreateIntentRequest, FundMakerEscrowRequest, PreparedTx, RevealQuoteRequest,
+        SubmitQuoteRequest, TxBuildError,
+    },
 };
 
 pub fn router() -> Router<SharedState> {
@@ -28,6 +31,9 @@ pub fn router() -> Router<SharedState> {
         .route("/api/intents/{id}/quotes", get(list_quotes_for_intent))
         .route("/api/fills", get(list_fills))
         .route("/api/tx/create_intent", post(prepare_create_intent))
+        .route("/api/tx/submit_quote", post(prepare_submit_quote))
+        .route("/api/tx/reveal_quote", post(prepare_reveal_quote))
+        .route("/api/tx/fund_maker_escrow", post(prepare_fund_maker_escrow))
         .route("/api/events", get(events))
 }
 
@@ -128,18 +134,64 @@ async fn prepare_create_intent(
 ) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
     let s = state.read().await;
     let Some(sol) = s.solana.as_ref() else {
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "error": "solana_unconfigured",
-                "message": "set SOLANA_RPC_URL to enable on-chain tx prep"
-            })),
-        ));
+        return Err(solana_unconfigured());
     };
     match tx::build_create_intent(sol, req).await {
         Ok(prep) => Ok(Json(prep)),
         Err(e) => Err(map_build_error(e)),
     }
+}
+
+async fn prepare_submit_quote(
+    State(state): State<SharedState>,
+    Json(req): Json<SubmitQuoteRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_submit_quote(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
+}
+
+async fn prepare_reveal_quote(
+    State(state): State<SharedState>,
+    Json(req): Json<RevealQuoteRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_reveal_quote(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
+}
+
+async fn prepare_fund_maker_escrow(
+    State(state): State<SharedState>,
+    Json(req): Json<FundMakerEscrowRequest>,
+) -> Result<Json<PreparedTx>, (StatusCode, Json<serde_json::Value>)> {
+    let s = state.read().await;
+    let Some(sol) = s.solana.as_ref() else {
+        return Err(solana_unconfigured());
+    };
+    tx::build_fund_maker_escrow(sol, req)
+        .await
+        .map(Json)
+        .map_err(map_build_error)
+}
+
+fn solana_unconfigured() -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(serde_json::json!({
+            "error": "solana_unconfigured",
+            "message": "set SOLANA_RPC_URL to enable on-chain tx prep"
+        })),
+    )
 }
 
 /// Map [`TxBuildError`] onto an HTTP status + structured body. User

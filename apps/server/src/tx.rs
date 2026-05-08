@@ -203,41 +203,251 @@ pub async fn build_create_intent(
         AccountMeta::new_readonly(np::id::SYSVAR_RENT, false), // rent
     ];
 
-    let ix = Instruction {
-        program_id: np::id::PROGRAM,
-        accounts: metas,
-        data,
-    };
-
     // -- pull blockhash and assemble the unsigned tx -----------------
-    let blockhash = sol.latest_blockhash().await?;
-    // We don't have getLatestBlockhashWithLastValidBlockHeight in the
-    // wrapper yet; surface 0 for now and expose a real value when the
-    // tx-tracker route lands in commit 8.
-    let last_valid_block_height = 0;
-
-    let message = Message::new_with_blockhash(&[ix], Some(&taker), &blockhash);
-    let tx = Transaction::new_unsigned(message.clone());
-
-    let tx_bytes = bincode::serialize(&tx)?;
-    let msg_bytes = bincode::serialize(&message)?;
-
-    Ok(PreparedTx {
-        tx_base64: B64.encode(tx_bytes),
-        message_base64: B64.encode(msg_bytes),
-        blockhash: blockhash.to_string(),
-        last_valid_block_height,
-        fee_payer: taker.to_string(),
-        accounts: PreparedAccounts {
+    finalize_tx(
+        sol,
+        &taker,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
             intent: Some(intent_pda.to_string()),
             escrow: Some(escrow_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
             ..Default::default()
         },
-    })
+    )
+    .await
+}
+
+// ---- submit_quote --------------------------------------------------
+
+/// `POST /api/tx/submit_quote` body.
+#[derive(Clone, Debug, Deserialize)]
+pub struct SubmitQuoteRequest {
+    pub maker: String,
+    /// `Intent` PDA, base58.
+    pub intent: String,
+    /// 32-byte hex sha256(price_le || size_le || nonce32).
+    pub commitment_hex: String,
+    /// 16-byte hex used as the `Quote` PDA seed. Client picks this; it
+    /// only needs to be unique per (intent, maker).
+    pub nonce_hex: String,
+}
+
+pub async fn build_submit_quote(
+    sol: &SolanaClient,
+    req: SubmitQuoteRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    let maker = parse_pk("maker", &req.maker)?;
+    let intent = parse_pk("intent", &req.intent)?;
+    let commitment = parse_fixed_hex::<32>("commitment_hex", &req.commitment_hex)?;
+    let nonce = parse_fixed_hex::<16>("nonce_hex", &req.nonce_hex)?;
+
+    let (quote_pda, _) = np::pda::quote(&intent, &maker, &nonce);
+    let (reputation_pda, _) = np::pda::reputation(&maker);
+
+    let params = np::params::SubmitQuoteParams { commitment, nonce };
+    let data = np::params::encode_ix_data(np::discriminator::ix::SUBMIT_QUOTE, &params)?;
+
+    // Account order MUST match `SubmitQuote` in
+    // chain/programs/nyxbid/src/instructions/submit_quote.rs.
+    let metas = vec![
+        AccountMeta::new(maker, true),                    // maker (signer, mut)
+        AccountMeta::new(intent, false),                  // intent (mut)
+        AccountMeta::new(quote_pda, false),               // quote (init)
+        AccountMeta::new(reputation_pda, false),          // reputation (init_if_needed)
+        AccountMeta::new_readonly(np::id::SYSTEM, false), // system_program
+    ];
+
+    let prepared = finalize_tx(
+        sol,
+        &maker,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            quote: Some(quote_pda.to_string()),
+            reputation: Some(reputation_pda.to_string()),
+            ..Default::default()
+        },
+    )
+    .await?;
+    Ok(prepared)
+}
+
+// ---- reveal_quote --------------------------------------------------
+
+/// `POST /api/tx/reveal_quote` body.
+#[derive(Clone, Debug, Deserialize)]
+pub struct RevealQuoteRequest {
+    pub maker: String,
+    /// `Intent` PDA, base58.
+    pub intent: String,
+    /// `Quote` PDA, base58 (returned by /api/tx/submit_quote).
+    pub quote: String,
+    pub revealed_price: u64,
+    pub revealed_size: u64,
+    /// 32-byte hex secret used in the original sha256 commitment.
+    pub commit_nonce_hex: String,
+}
+
+pub async fn build_reveal_quote(
+    sol: &SolanaClient,
+    req: RevealQuoteRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    if req.revealed_price == 0 || req.revealed_size == 0 {
+        return Err(TxBuildError::ZeroValue);
+    }
+    let maker = parse_pk("maker", &req.maker)?;
+    let intent = parse_pk("intent", &req.intent)?;
+    let quote = parse_pk("quote", &req.quote)?;
+    let nonce = parse_fixed_hex::<32>("commit_nonce_hex", &req.commit_nonce_hex)?;
+
+    let params = np::params::RevealQuoteParams {
+        revealed_price: req.revealed_price,
+        revealed_size: req.revealed_size,
+        nonce,
+    };
+    let data = np::params::encode_ix_data(np::discriminator::ix::REVEAL_QUOTE, &params)?;
+
+    // Account order MUST match `RevealQuote` in
+    // chain/programs/nyxbid/src/instructions/reveal_quote.rs.
+    let metas = vec![
+        AccountMeta::new(maker, true),  // maker (signer, mut)
+        AccountMeta::new(intent, false), // intent (mut)
+        AccountMeta::new(quote, false), // quote (mut)
+    ];
+
+    finalize_tx(
+        sol,
+        &maker,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            quote: Some(quote.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+}
+
+// ---- fund_maker_escrow --------------------------------------------
+
+/// `POST /api/tx/fund_maker_escrow` body.
+///
+/// `amount` is the units of the maker-locked mint to deposit. The
+/// builder fetches the `Intent` account on chain to decide whether the
+/// maker locks `base_mint` (for buy intents) or `quote_mint` (for sells),
+/// so the client never has to encode that branch.
+#[derive(Clone, Debug, Deserialize)]
+pub struct FundMakerEscrowRequest {
+    pub maker: String,
+    pub intent: String,
+    pub quote: String,
+    pub amount: u64,
+}
+
+pub async fn build_fund_maker_escrow(
+    sol: &SolanaClient,
+    req: FundMakerEscrowRequest,
+) -> Result<PreparedTx, TxBuildError> {
+    if req.amount == 0 {
+        return Err(TxBuildError::ZeroValue);
+    }
+    let maker = parse_pk("maker", &req.maker)?;
+    let intent_pk = parse_pk("intent", &req.intent)?;
+    let quote_pk = parse_pk("quote", &req.quote)?;
+
+    // Need the on-chain `Intent` to figure out the maker-locked mint.
+    let intent_acc: np::state::Intent = sol
+        .get_anchor_account(&intent_pk)
+        .await?
+        .ok_or_else(|| TxBuildError::BadPubkey {
+            field: "intent",
+            error: "intent account not found".to_string(),
+        })?;
+    let maker_lock_mint = match intent_acc.side {
+        x if x == np::params::side::BUY => intent_acc.base_mint, // maker delivers base
+        x if x == np::params::side::SELL => intent_acc.quote_mint, // maker delivers quote
+        _ => return Err(TxBuildError::BadSide),
+    };
+
+    let (escrow_pda, _) = np::pda::escrow(&intent_pk);
+    let (maker_vault_pda, _) = np::pda::maker_vault(&intent_pk);
+    let (maker_source_ata, _) = np::pda::associated_token(&maker, &maker_lock_mint);
+    let (reputation_pda, _) = np::pda::reputation(&maker);
+
+    let params = np::params::FundMakerEscrowParams { amount: req.amount };
+    let data =
+        np::params::encode_ix_data(np::discriminator::ix::FUND_MAKER_ESCROW, &params)?;
+
+    // Account order MUST match `FundMakerEscrow` in
+    // chain/programs/nyxbid/src/instructions/fund_maker_escrow.rs.
+    let metas = vec![
+        AccountMeta::new(maker, true),                          // maker (signer, mut)
+        AccountMeta::new(intent_pk, false),                     // intent (mut)
+        AccountMeta::new(quote_pk, false),                      // quote (mut)
+        AccountMeta::new(escrow_pda, false),                    // escrow (mut)
+        AccountMeta::new_readonly(maker_lock_mint, false),      // maker_lock_mint
+        AccountMeta::new(maker_source_ata, false),              // maker_source (mut)
+        AccountMeta::new(maker_vault_pda, false),               // maker_vault (init)
+        AccountMeta::new(reputation_pda, false),                // reputation (mut)
+        AccountMeta::new_readonly(np::id::TOKEN, false),        // token_program
+        AccountMeta::new_readonly(np::id::SYSTEM, false),       // system_program
+        AccountMeta::new_readonly(np::id::SYSVAR_RENT, false),  // rent
+    ];
+
+    finalize_tx(
+        sol,
+        &maker,
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
+        PreparedAccounts {
+            escrow: Some(escrow_pda.to_string()),
+            maker_vault: Some(maker_vault_pda.to_string()),
+            quote: Some(quote_pk.to_string()),
+            reputation: Some(reputation_pda.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
 }
 
 // ---- helpers -------------------------------------------------------
+
+/// Pull the latest blockhash, build the unsigned `Transaction`, and
+/// serialise it for the wire. Shared by every builder above.
+async fn finalize_tx(
+    sol: &SolanaClient,
+    fee_payer: &Pubkey,
+    ix: Instruction,
+    accounts: PreparedAccounts,
+) -> Result<PreparedTx, TxBuildError> {
+    let blockhash = sol.latest_blockhash().await?;
+    let message = Message::new_with_blockhash(&[ix], Some(fee_payer), &blockhash);
+    let tx = Transaction::new_unsigned(message.clone());
+    let tx_bytes = bincode::serialize(&tx)?;
+    let msg_bytes = bincode::serialize(&message)?;
+    Ok(PreparedTx {
+        tx_base64: B64.encode(tx_bytes),
+        message_base64: B64.encode(msg_bytes),
+        blockhash: blockhash.to_string(),
+        last_valid_block_height: 0,
+        fee_payer: fee_payer.to_string(),
+        accounts,
+    })
+}
 
 fn parse_pk(field: &'static str, s: &str) -> Result<Pubkey, TxBuildError> {
     use std::str::FromStr;
@@ -303,5 +513,51 @@ mod tests {
         assert_eq!(decoded.limit_price, params.limit_price);
         assert_eq!(decoded.commitment_root, params.commitment_root);
         assert_eq!(decoded.nonce, params.nonce);
+    }
+
+    #[test]
+    fn submit_quote_data_layout() {
+        let p = np::params::SubmitQuoteParams {
+            commitment: [9u8; 32],
+            nonce: [4u8; 16],
+        };
+        let data =
+            np::params::encode_ix_data(np::discriminator::ix::SUBMIT_QUOTE, &p).unwrap();
+        assert_eq!(&data[..8], &np::discriminator::ix::SUBMIT_QUOTE);
+        // 32 + 16 = 48 param bytes
+        assert_eq!(data.len(), 8 + 48);
+        let decoded =
+            <np::params::SubmitQuoteParams as borsh::BorshDeserialize>::try_from_slice(
+                &data[8..],
+            )
+            .unwrap();
+        assert_eq!(decoded.commitment, p.commitment);
+        assert_eq!(decoded.nonce, p.nonce);
+    }
+
+    #[test]
+    fn reveal_quote_data_layout() {
+        let p = np::params::RevealQuoteParams {
+            revealed_price: 123_456_789,
+            revealed_size: 987_654_321,
+            nonce: [5u8; 32],
+        };
+        let data =
+            np::params::encode_ix_data(np::discriminator::ix::REVEAL_QUOTE, &p).unwrap();
+        assert_eq!(&data[..8], &np::discriminator::ix::REVEAL_QUOTE);
+        // u64 + u64 + [u8;32] = 48 param bytes
+        assert_eq!(data.len(), 8 + 48);
+    }
+
+    #[test]
+    fn fund_maker_escrow_data_layout() {
+        let p = np::params::FundMakerEscrowParams {
+            amount: 9_999_999,
+        };
+        let data =
+            np::params::encode_ix_data(np::discriminator::ix::FUND_MAKER_ESCROW, &p).unwrap();
+        assert_eq!(&data[..8], &np::discriminator::ix::FUND_MAKER_ESCROW);
+        // u64 = 8 param bytes
+        assert_eq!(data.len(), 8 + 8);
     }
 }
