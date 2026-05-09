@@ -120,9 +120,11 @@ impl Store {
             }
         }
         let total_fills = self.receipts.len() as u64;
-        let notional_24h = self
+        let cutoff_24h = Utc::now().timestamp() - 86_400;
+        let notional_24h: u64 = self
             .receipts
             .values()
+            .filter(|r| r.data.settled_at >= cutoff_24h)
             .map(|r| {
                 (r.data.filled_size as u128 * r.data.filled_price as u128
                     / np::state::PRICE_SCALE as u128) as u64
@@ -197,112 +199,105 @@ impl Store {
         Ok(())
     }
 
-    /// React to a single chain event by re-fetching the touched
-    /// account(s). We re-fetch instead of trusting the event payload so
-    /// the cache reflects post-handler status transitions.
-    pub async fn apply_event(
-        &mut self,
-        env: &ChainEnvelope,
-        sol: &SolanaClient,
-    ) -> Result<(), SolanaError> {
-        match &env.event {
-            ChainEvent::IntentCreated(e) => {
-                self.refresh_intent(&e.intent, sol).await?;
-            }
-            ChainEvent::QuoteSubmitted(e) => {
-                self.refresh_quote(&e.quote, sol).await?;
-                // Intent doesn't change but UI reads quote count via
-                // `list_quotes_for`, so no re-fetch needed.
-            }
-            ChainEvent::QuoteRevealed(e) => {
-                self.refresh_quote(&e.quote, sol).await?;
-                self.refresh_intent(&e.intent, sol).await?;
-            }
-            ChainEvent::AuctionResolved(e) => {
-                self.refresh_intent(&e.intent, sol).await?;
-                self.refresh_quote(&e.winning_quote, sol).await?;
-            }
-            ChainEvent::Settled(e) => {
-                self.refresh_intent(&e.intent, sol).await?;
-                self.refresh_receipt(&e.receipt, Some(env.signature.clone()), sol)
-                    .await?;
-            }
-            ChainEvent::Cancelled(e) => {
-                self.refresh_intent(&e.intent, sol).await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn refresh_intent(
-        &mut self,
-        pk: &Pubkey,
-        sol: &SolanaClient,
-    ) -> Result<(), SolanaError> {
-        match sol.get_anchor_account::<np::state::Intent>(pk).await? {
-            Some(data) => {
-                let row = IntentRow {
-                    pubkey: *pk,
-                    data,
-                    observed_at: self
+    /// Apply a batch of pre-fetched account updates to the cache.
+    ///
+    /// This is the **only** method that mutates the cache after
+    /// cold-start. It holds `&mut self` (= the write lock) only for
+    /// the in-memory inserts/removes — no I/O happens here. The RPC
+    /// calls live in the free-standing [`fetch_updates`] function,
+    /// which runs with **no lock** held.
+    pub fn apply_updates(&mut self, updates: Vec<StoreUpdate>) {
+        let now = Utc::now();
+        for update in updates {
+            match update {
+                StoreUpdate::Intent(pk, Some(data)) => {
+                    let observed_at = self
                         .intents
-                        .get(pk)
+                        .get(&pk)
                         .map(|r| r.observed_at)
-                        .unwrap_or_else(Utc::now),
-                };
-                self.intents.insert(*pk, row);
-            }
-            None => {
-                // Account was closed (cancel/expire). Drop from cache.
-                self.intents.remove(pk);
-            }
-        }
-        Ok(())
-    }
-
-    async fn refresh_quote(
-        &mut self,
-        pk: &Pubkey,
-        sol: &SolanaClient,
-    ) -> Result<(), SolanaError> {
-        match sol.get_anchor_account::<np::state::Quote>(pk).await? {
-            Some(data) => {
-                let row = QuoteRow {
-                    pubkey: *pk,
-                    data,
-                    observed_at: self
+                        .unwrap_or(now);
+                    self.intents.insert(pk, IntentRow { pubkey: pk, data, observed_at });
+                }
+                StoreUpdate::Intent(pk, None) => {
+                    self.intents.remove(&pk);
+                }
+                StoreUpdate::Quote(pk, Some(data)) => {
+                    let observed_at = self
                         .quotes
-                        .get(pk)
+                        .get(&pk)
                         .map(|r| r.observed_at)
-                        .unwrap_or_else(Utc::now),
-                };
-                self.quotes.insert(*pk, row);
-            }
-            None => {
-                self.quotes.remove(pk);
+                        .unwrap_or(now);
+                    self.quotes.insert(pk, QuoteRow { pubkey: pk, data, observed_at });
+                }
+                StoreUpdate::Quote(pk, None) => {
+                    self.quotes.remove(&pk);
+                }
+                StoreUpdate::Receipt(pk, Some(data), sig) => {
+                    self.receipts.insert(
+                        pk,
+                        ReceiptRow { pubkey: pk, data, tx_signature: sig },
+                    );
+                }
+                StoreUpdate::Receipt(pk, None, _) => {
+                    self.receipts.remove(&pk);
+                }
             }
         }
-        Ok(())
     }
+}
 
-    async fn refresh_receipt(
-        &mut self,
-        pk: &Pubkey,
-        signature: Option<String>,
-        sol: &SolanaClient,
-    ) -> Result<(), SolanaError> {
-        if let Some(data) = sol.get_anchor_account::<np::state::Receipt>(pk).await? {
-            self.receipts.insert(
-                *pk,
-                ReceiptRow {
-                    pubkey: *pk,
-                    data,
-                    tx_signature: signature,
-                },
-            );
+/// What an RPC call fetched for one account.
+pub enum StoreUpdate {
+    Intent(Pubkey, Option<np::state::Intent>),
+    Quote(Pubkey, Option<np::state::Quote>),
+    Receipt(Pubkey, Option<np::state::Receipt>, Option<String>),
+}
+
+/// Determine which accounts a chain event touched, fetch them over RPC,
+/// and return the results for a later [`Store::apply_updates`] call.
+///
+/// This function is **async** and makes one or more RPC calls, but it
+/// does **not** hold any lock on the store. Callers acquire the write
+/// lock only after this returns, keeping it held for sub-microsecond
+/// in-memory mutations.
+pub async fn fetch_updates(
+    env: &ChainEnvelope,
+    sol: &SolanaClient,
+) -> Result<Vec<StoreUpdate>, SolanaError> {
+    let mut out = Vec::with_capacity(2);
+    match &env.event {
+        ChainEvent::IntentCreated(e) => {
+            let d = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            out.push(StoreUpdate::Intent(e.intent, d));
         }
-        Ok(())
+        ChainEvent::QuoteSubmitted(e) => {
+            let d = sol.get_anchor_account::<np::state::Quote>(&e.quote).await?;
+            out.push(StoreUpdate::Quote(e.quote, d));
+        }
+        ChainEvent::QuoteRevealed(e) => {
+            let d = sol.get_anchor_account::<np::state::Quote>(&e.quote).await?;
+            out.push(StoreUpdate::Quote(e.quote, d));
+            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            out.push(StoreUpdate::Intent(e.intent, i));
+        }
+        ChainEvent::AuctionResolved(e) => {
+            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            out.push(StoreUpdate::Intent(e.intent, i));
+            let q = sol.get_anchor_account::<np::state::Quote>(&e.winning_quote).await?;
+            out.push(StoreUpdate::Quote(e.winning_quote, q));
+        }
+        ChainEvent::Settled(e) => {
+            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            out.push(StoreUpdate::Intent(e.intent, i));
+            let r = sol.get_anchor_account::<np::state::Receipt>(&e.receipt).await?;
+            out.push(StoreUpdate::Receipt(e.receipt, r, Some(env.signature.clone())));
+        }
+        ChainEvent::Cancelled(e) => {
+            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            out.push(StoreUpdate::Intent(e.intent, i));
+        }
     }
+    Ok(out)
 }
 
 // ---- DTO projection -----------------------------------------------------
@@ -374,8 +369,20 @@ fn receipt_to_dto(row: &ReceiptRow) -> dto::Fill {
 }
 
 /// Convert a chain `i64` unix timestamp into a `DateTime<Utc>`.
+///
+/// Logs a warning and falls back to `Utc::now()` when the value is out
+/// of the representable range (e.g. 0, negative, or far-future from a
+/// buggy program). This makes the substitution detectable in logs
+/// rather than silently stamping DTOs with the server's wall time.
 fn ts_to_utc(ts: i64) -> DateTime<Utc> {
-    Utc.timestamp_opt(ts, 0)
-        .single()
-        .unwrap_or_else(Utc::now)
+    match Utc.timestamp_opt(ts, 0).single() {
+        Some(dt) => dt,
+        None => {
+            tracing::warn!(
+                raw_timestamp = ts,
+                "on-chain timestamp out of range; falling back to Utc::now()"
+            );
+            Utc::now()
+        }
+    }
 }

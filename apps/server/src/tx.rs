@@ -759,7 +759,7 @@ async fn finalize_tx(
     ix: Instruction,
     accounts: PreparedAccounts,
 ) -> Result<PreparedTx, TxBuildError> {
-    let blockhash = sol.latest_blockhash().await?;
+    let (blockhash, last_valid_block_height) = sol.latest_blockhash().await?;
     let message = Message::new_with_blockhash(&[ix], Some(fee_payer), &blockhash);
     let tx = Transaction::new_unsigned(message.clone());
     let tx_bytes = bincode::serialize(&tx)?;
@@ -768,7 +768,7 @@ async fn finalize_tx(
         tx_base64: B64.encode(tx_bytes),
         message_base64: B64.encode(msg_bytes),
         blockhash: blockhash.to_string(),
-        last_valid_block_height: 0,
+        last_valid_block_height,
         fee_payer: fee_payer.to_string(),
         accounts,
     })

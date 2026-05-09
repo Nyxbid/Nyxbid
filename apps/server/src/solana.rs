@@ -139,10 +139,17 @@ impl SolanaClient {
         })
     }
 
-    /// Latest finalised blockhash, used by the tx builder so the wallet
-    /// can sign without a round-trip to the cluster.
-    pub async fn latest_blockhash(&self) -> Result<solana_hash::Hash, SolanaError> {
-        Ok(self.rpc.get_latest_blockhash().await?)
+    /// Latest blockhash **and** the last valid block height for it.
+    /// The tx builder bakes both into [`PreparedTx`] so the wallet
+    /// knows when to re-prepare if the user is slow to sign.
+    pub async fn latest_blockhash(
+        &self,
+    ) -> Result<(solana_hash::Hash, u64), SolanaError> {
+        let (hash, height) = self
+            .rpc
+            .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
+            .await?;
+        Ok((hash, height))
     }
 
     /// Fetch a single account; returns `Ok(None)` when the account does

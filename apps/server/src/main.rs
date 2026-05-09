@@ -54,8 +54,10 @@ async fn main() {
     });
 
     // Spawn the state-apply task: every chain event triggers a re-fetch
-    // of the touched account so the store mirrors the chain. This task
-    // owns the only writer-side handle to the store.
+    // of the touched account(s) and a short write-lock to apply the
+    // fetched data. The two-phase split (fetch_updates → apply_updates)
+    // keeps the write lock held only for sub-microsecond in-memory
+    // mutations; the (potentially slow) RPC calls happen with no lock.
     if let Some(sol) = sol.clone() {
         let store = Arc::clone(&store);
         let mut rx = chain_tx.subscribe();
@@ -63,10 +65,20 @@ async fn main() {
             loop {
                 match rx.recv().await {
                     Ok(env) => {
-                        let mut s = store.write().await;
-                        if let Err(e) = s.apply_event(&env, &sol).await {
-                            tracing::warn!(error = %e, signature = %env.signature, "store update failed");
-                        }
+                        // Phase 1: fetch over RPC — no lock held.
+                        let updates = match store::fetch_updates(&env, &sol).await {
+                            Ok(u) => u,
+                            Err(e) => {
+                                tracing::warn!(
+                                    error = %e,
+                                    signature = %env.signature,
+                                    "store fetch failed; skipping event"
+                                );
+                                continue;
+                            }
+                        };
+                        // Phase 2: apply — short write lock.
+                        store.write().await.apply_updates(updates);
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!(skipped = n, "state-apply task lagged behind broadcast channel");
