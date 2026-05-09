@@ -1,4 +1,4 @@
-mod auction;
+mod a2a;
 mod indexer;
 mod routes;
 mod solana;
@@ -19,6 +19,27 @@ use crate::store::{SharedStore, Store};
 
 #[tokio::main]
 async fn main() {
+    // Load `.env` files before tracing so the EnvFilter picks up
+    // RUST_LOG, and before SolanaClient::from_env so SOLANA_RPC_URL
+    // is in scope.
+    //
+    // Resolution order (first hit wins per key, later files don't
+    // overwrite earlier ones — this is the dotenvy semantic):
+    //   1. apps/server/.env  (most specific, app-local override)
+    //   2. ../../.env        (workspace root, when run from apps/server)
+    //   3. ./.env            (workspace root, when run from there)
+    //
+    // We try every plausible location instead of relying on cwd,
+    // because `cargo run -p nyxbid-server` runs from the workspace
+    // root while a direct binary invocation runs from elsewhere.
+    for path in [
+        "apps/server/.env",
+        "../../.env",
+        ".env",
+    ] {
+        let _ = dotenvy::from_filename(path);
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::from_default_env().add_directive("info".parse().unwrap()),
@@ -29,7 +50,12 @@ async fn main() {
     if sol.is_none() {
         tracing::warn!(
             "solana client not configured \u{2014} on-chain tx prep + indexer disabled \
-             (set SOLANA_RPC_URL to enable)"
+             (set SOLANA_RPC_URL in .env or the process environment)"
+        );
+    } else {
+        tracing::info!(
+            rpc_url = %sol.as_ref().unwrap().rpc_url,
+            "solana client configured"
         );
     }
 

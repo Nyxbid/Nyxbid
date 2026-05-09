@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+
 import { SolanaWalletProvider } from "@/components/wallet-provider";
+import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,10 +15,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// High-contrast transitional serif used on the marketing surface only.
+// The dashboard product UI stays sans-serif; serif is reserved for the
+// editorial hero / feature copy on /, /docs hero, and similar pages.
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-serif",
+  weight: ["400"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Nyxbid — sealed-bid OTC for Solana",
-  description:
-    "Private RFQ venue for OTC-size trades on Solana. Sealed bids, atomic settlement, agent-native via A2A.",
+  title: "Nyxbid",
+  description: "Sealed-bid OTC for Solana.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a0d",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
@@ -27,10 +43,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
-      <body className="min-h-screen bg-background text-foreground">
-        <SolanaWalletProvider>{children}</SolanaWalletProvider>
+      <body className="min-h-screen">
+        <SolanaWalletProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </SolanaWalletProvider>
       </body>
     </html>
   );

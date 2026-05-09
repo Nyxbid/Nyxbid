@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
+  { href: "/trade", label: "Trade" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/intents", label: "Intents" },
   { href: "/quotes", label: "Quotes" },
@@ -15,24 +17,29 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-border bg-card md:flex md:flex-col">
-      <div className="flex h-14 items-center px-5">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          nyxbid
+    <aside className="hidden w-56 shrink-0 border-r border-[var(--hairline)] md:flex md:flex-col">
+      <div className="flex h-14 items-center border-b border-[var(--hairline)] px-5">
+        <Link
+          href="/"
+          className="text-[19px] tracking-tight text-foreground/95 hover:text-foreground"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
+          Nyxbid
         </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 px-3 pt-2">
+      <nav className="flex flex-1 flex-col gap-px px-2.5 pt-3">
         {nav.map(({ href, label }) => {
-          const active = pathname === href;
+          const active =
+            pathname === href || pathname?.startsWith(`${href}/`);
           return (
             <Link
               key={href}
               href={href}
-              className={`rounded-md px-3 py-2 text-sm font-medium ${
+              className={`flex h-9 items-center rounded-[var(--r-sm)] px-3 text-[13px] font-medium tracking-tight transition-colors ${
                 active
-                  ? "bg-accent/10 text-accent"
-                  : "text-muted hover:bg-accent/5 hover:text-foreground"
+                  ? "bg-[var(--surface-2)] text-foreground"
+                  : "text-muted hover:bg-[var(--surface)] hover:text-foreground"
               }`}
             >
               {label}
@@ -41,9 +48,11 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border px-5 py-4">
+      <div className="border-t border-[var(--hairline)] p-4">
         <WalletButton />
-        <p className="mt-3 text-[10px] text-muted">Solana Devnet</p>
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
+          devnet
+        </p>
       </div>
     </aside>
   );

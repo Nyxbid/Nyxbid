@@ -1,176 +1,336 @@
+import Image from "next/image";
 import Link from "next/link";
 
-const features = [
-  {
-    title: "Sealed-bid RFQ",
-    description:
-      "Makers submit commitments, not prices. Nobody sees the book — not even the venue. Price discovery stays private until resolution.",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="10" width="16" height="10" rx="2" />
-        <path d="M8 10V7a4 4 0 018 0v3" />
-      </svg>
-    ),
-  },
-  {
-    title: "Atomic settlement",
-    description:
-      "Winning quote is revealed and settled in a single Solana transaction. HTLC-style escrow guarantees no half-fills and no frontrunning.",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v20M4 12h16" />
-      </svg>
-    ),
-  },
-  {
-    title: "Agent-native via A2A",
-    description:
-      "Maker and taker agents are first-class participants. Signed A2A task messages bind agent identity to on-chain quotes and settlement.",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3" />
-      </svg>
-    ),
-  },
-];
+import { GithubIcon } from "@/components/icons";
 
-const steps = [
-  {
-    step: "01",
-    title: "Taker posts an intent",
-    description:
-      "A taker broadcasts `buy 50k SOL up to $195` as an intent PDA. No book reveals. A reveal deadline is set.",
-  },
-  {
-    step: "02",
-    title: "Makers commit sealed quotes",
-    description:
-      "Makers submit hash commitments of (price, size, nonce). Nothing is readable on-chain until reveal. No frontrunning surface.",
-  },
-  {
-    step: "03",
-    title: "Resolve + settle atomically",
-    description:
-      "At the deadline, makers reveal. The program picks the best valid quote and settles via HTLC-style escrow in one transaction.",
-  },
-];
-
+/**
+ * Landing.
+ *
+ * Composition:
+ *   1. Hero        cosmos · wordmark+github float in hero corners ·
+ *                  serif headline · pill CTA · grain
+ *   2. Edge        cream paper · 3 hairline rows · serif headline
+ *   3. Movements   cosmos · 3 numbered movements
+ *   4. Builders    cosmos · 2-col with sunsetdesk image
+ *   5. CTA         full-bleed cloudtop · final pill
+ *
+ * Why no <header>: the user repeatedly read any persistent top
+ * element as a "solid navbar". Rendering the brand and icon as
+ * absolute children of the hero section solves that — they live
+ * inside the hero's grain/cosmos surface, so they belong to the
+ * hero rather than to a separate bar.
+ */
 export default function LandingPage() {
   return (
     <>
-      <section className="mx-auto max-w-3xl px-6 pb-20 pt-24 text-center">
-        <p className="text-sm font-medium tracking-wide text-accent">
-          OTC infrastructure for Solana
-        </p>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-          Sealed-bid RFQ.
+      <Hero />
+      <Edge />
+      <Movements />
+      <Builders />
+      <CTA />
+    </>
+  );
+}
+
+function ArrowRight() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 9h10M9 4l5 5-5 5" />
+    </svg>
+  );
+}
+
+function HeroChrome() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-7 md:px-10 md:pt-9">
+      <div className="pointer-events-auto mx-auto flex max-w-7xl items-center justify-between">
+        <Link
+          href="/"
+          className="text-[20px] tracking-tight text-foreground/95 hover:text-foreground"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
+          Nyxbid
+        </Link>
+        <Link
+          href="https://github.com/Nyxbid/Nyxbid"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Nyxbid on GitHub"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[color-mix(in_srgb,var(--fg)_80%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--fg)_8%,transparent)] hover:text-foreground"
+        >
+          <GithubIcon size={19} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <section className="lp-cosmos">
+      <HeroChrome />
+      <div className="relative mx-auto max-w-5xl px-6 pb-32 pt-32 text-center md:px-10 md:pb-40 md:pt-40">
+        <p className="lp-eyebrow">Sealed-bid OTC · Solana</p>
+        <h1 className="lp-display mt-6 text-[52px] sm:text-[76px] md:text-[96px]">
+          Trade in size.
           <br />
-          Atomic settlement.
+          <em>Without showing&nbsp;your hand.</em>
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
-          Nyxbid is a private venue for OTC-size trades on Solana. Sealed bids,
-          atomic settlement, agent-native via A2A.
+        <p
+          className="mx-auto mt-8 max-w-xl text-balance text-[16px] leading-[1.55] text-[color-mix(in_srgb,var(--fg)_72%,transparent)]"
+          style={{ fontFamily: "var(--font-geist-sans)" }}
+        >
+          A private RFQ venue for OTC-size trades. Sealed bids, atomic
+          settlement, agent-native via A2A.
         </p>
-        <div className="mt-10 flex items-center justify-center gap-4">
-          <Link
-            href="/docs"
-            className="rounded-md bg-foreground px-5 py-2.5 text-sm font-medium text-background hover:bg-foreground/90"
-          >
-            Read the docs
-          </Link>
-          <Link
-            href="/dashboard"
-            className="rounded-md border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-accent/5"
-          >
+
+        <div className="mt-12 flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-7">
+          <Link href="/trade" className="lp-pill">
+            <span className="lp-pill__disc">
+              <ArrowRight />
+            </span>
             Open the app
           </Link>
+          <Link href="/docs" className="lp-link">
+            Read the docs
+          </Link>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      <section className="border-t border-border bg-card/50">
-        <div className="mx-auto max-w-5xl px-6 py-20">
-          <div className="grid gap-12 md:grid-cols-3">
-            {features.map((f) => (
-              <div key={f.title}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted">
-                  {f.icon}
-                </div>
-                <h3 className="mt-4 font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {f.description}
-                </p>
-              </div>
-            ))}
-          </div>
+function Edge() {
+  return (
+    <section className="lp-cream">
+      <div className="mx-auto grid max-w-6xl gap-16 px-6 py-32 md:grid-cols-[1.1fr_1fr] md:px-10 md:py-40">
+        <div>
+          <p className="lp-eyebrow">The edge</p>
+          <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
+            Built for the way{" "}
+            <em style={{ color: "var(--accent)" }}>agents trade.</em>
+          </h2>
         </div>
-      </section>
 
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-6 py-20">
-          <h2 className="text-2xl font-bold tracking-tight">How it works</h2>
-          <p className="mt-2 text-sm text-muted">
-            Three phases from intent to settlement.
+        <div className="space-y-8 self-end pt-2 text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--lp-ink)_72%,transparent)]">
+          <CreamRow
+            title="Sealed bids"
+            body="Makers commit hashes, not prices. Nothing leaks on-chain until reveal — no quote-sniping, no copytraders shadowing the book."
+          />
+          <CreamRow
+            title="Atomic settlement"
+            body="Both legs swap inside a single Solana transaction. No half-fills, no settlement risk, no relayer trust."
+          />
+          <CreamRow
+            title="Agent-native"
+            body="Identity rides on Google's A2A. Maker bots stream chain events directly; takers post intents from any wallet."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CreamRow({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="border-t border-[color-mix(in_srgb,var(--lp-ink)_15%,transparent)] pt-7">
+      <h3 className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--lp-ink)]">
+        {title}
+      </h3>
+      <p className="mt-3">{body}</p>
+    </div>
+  );
+}
+
+function Movements() {
+  const steps = [
+    {
+      n: "I",
+      title: "Post intent",
+      body: "Taker broadcasts a sealed RFQ with a reveal deadline. Their leg is locked into escrow on the spot.",
+    },
+    {
+      n: "II",
+      title: "Sealed quotes",
+      body: "Makers submit hash commitments of (price, size, nonce). The book stays private until the auction closes.",
+    },
+    {
+      n: "III",
+      title: "Reveal & settle",
+      body: "Best valid quote wins. Both legs swap atomically through HTLC-style escrow. Receipt is on-chain.",
+    },
+  ];
+  return (
+    <section className="lp-cosmos">
+      <div className="mx-auto max-w-6xl px-6 py-28 md:px-10 md:py-36">
+        <p className="lp-eyebrow">How it works</p>
+        <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
+          Three movements,
+          <br />
+          <em>one transaction.</em>
+        </h2>
+
+        <div className="mt-20 grid gap-12 md:grid-cols-3 md:gap-10">
+          {steps.map((s) => (
+            <div
+              key={s.n}
+              className="border-t border-[color-mix(in_srgb,var(--fg)_18%,transparent)] pt-7"
+            >
+              <p
+                className="text-[28px] leading-none"
+                style={{
+                  fontFamily: "var(--font-serif)",
+                  color: "var(--accent-soft)",
+                }}
+              >
+                {s.n}
+              </p>
+              <h3
+                className="mt-5 text-[22px] text-foreground"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                {s.title}
+              </h3>
+              <p className="mt-3 text-[14px] leading-[1.65] text-[color-mix(in_srgb,var(--fg)_72%,transparent)]">
+                {s.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Builders() {
+  return (
+    <section className="lp-cosmos">
+      <div className="mx-auto grid max-w-6xl items-center gap-16 px-6 py-28 md:grid-cols-[1fr_1.05fr] md:px-10 md:py-36">
+        <FeatureImage
+          src="/sunsetdesk.png"
+          alt="A solo builder watching markets and a sunset roll across mountain valleys."
+          aspect="4 / 5"
+        />
+
+        <div>
+          <p className="lp-eyebrow">For builders</p>
+          <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
+            Hook in,
+            <br />
+            <em style={{ color: "var(--accent-soft)" }}>quote the venue.</em>
+          </h2>
+          <p className="mt-8 max-w-md text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--fg)_75%,transparent)]">
+            Stream open intents over WebSocket. Sign quote
+            commitments offline. Reveal, fund, and settle from a
+            single signed transaction. The whole protocol fits in a
+            short afternoon.
           </p>
-          <div className="mt-12 grid gap-10 md:grid-cols-3">
-            {steps.map((s) => (
-              <div key={s.step}>
-                <p className="font-mono text-xs text-accent">{s.step}</p>
-                <h3 className="mt-2 font-semibold">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {s.description}
-                </p>
-              </div>
-            ))}
+          <div className="mt-10 flex flex-wrap items-center gap-6">
+            <Link href="/docs/makers" className="lp-link">
+              Maker guide
+            </Link>
+            <Link href="/docs/agents" className="lp-link">
+              Agent integration
+            </Link>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      <section className="border-t border-border bg-card/50">
-        <div className="mx-auto max-w-5xl px-6 py-20">
-          <h2 className="text-2xl font-bold tracking-tight">Architecture</h2>
-          <p className="mt-2 text-sm text-muted">
-            Anchor program + Rust server + Next.js surface.
-          </p>
-          <div className="mt-8 overflow-hidden rounded-lg border border-border bg-card">
-            <pre className="overflow-x-auto px-6 py-5 font-mono text-sm leading-relaxed text-muted">
-{`taker ─────────────┐                              ┌──── Anchor program
-                   ▼                              ▼     Intent / Quote /
-      ┌────────────────────────┐   settle tx    Escrow / Receipt
-      │    nyxbid-server       │ ───────────────►
-      │    (Rust / Axum)       │
-      │                        │
-      │  intent  auction  a2a  │ ◀── gRPC stream ─ Maker bots
-      │                        │ ◀── A2A tasks ─── Taker / maker agents
-      └────────────────────────┘
-                   ▲
-                   │ WebSocket
-              nyxbid-client (Next.js)`}
-            </pre>
-          </div>
-        </div>
-      </section>
+function CTA() {
+  return (
+    <section className="relative isolate overflow-hidden">
+      <div className="absolute inset-0 -z-10">
+        <Image
+          src="/cloudtop.png"
+          alt=""
+          fill
+          priority={false}
+          sizes="100vw"
+          className="object-cover"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, color-mix(in srgb, var(--bg) 60%, transparent) 0%, color-mix(in srgb, var(--bg) 30%, transparent) 50%, color-mix(in srgb, var(--bg) 80%, transparent) 100%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-30 mix-blend-soft-light"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+            backgroundSize: "320px 320px",
+          }}
+        />
+      </div>
 
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-6 py-20">
-          <h2 className="text-2xl font-bold tracking-tight">Stack</h2>
-          <div className="mt-8 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Server", value: "Rust / Axum" },
-              { label: "Client", value: "Next.js / Bun" },
-              { label: "Chain", value: "Anchor 1.0" },
-              { label: "Settlement", value: "Solana / USDC" },
-            ].map((item) => (
-              <div key={item.label} className="bg-card px-5 py-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                  {item.label}
-                </p>
-                <p className="mt-1 font-mono text-sm">{item.value}</p>
-              </div>
-            ))}
-          </div>
+      <div className="relative mx-auto max-w-3xl px-6 py-40 text-center md:px-10 md:py-52">
+        <p className="lp-eyebrow">The venue</p>
+        <h2 className="lp-display mt-6 text-[44px] sm:text-[60px] md:text-[80px]">
+          Open the <em>venue.</em>
+        </h2>
+        <p className="mx-auto mt-6 max-w-md text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--fg)_82%,transparent)]">
+          No custody. No relayer keys. Sign once with Phantom,
+          Solflare, or Backpack.
+        </p>
+        <div className="mt-12 flex justify-center">
+          <Link href="/trade" className="lp-pill">
+            <span className="lp-pill__disc">
+              <ArrowRight />
+            </span>
+            Launch app
+          </Link>
         </div>
-      </section>
-    </>
+      </div>
+    </section>
+  );
+}
+
+function FeatureImage({
+  src,
+  alt,
+  aspect,
+}: {
+  src: string;
+  alt: string;
+  aspect: string;
+}) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-[10px] border border-[color-mix(in_srgb,var(--fg)_12%,transparent)]"
+      style={{ aspectRatio: aspect }}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(min-width: 768px) 50vw, 100vw"
+        className="object-cover"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, color-mix(in srgb, var(--bg) 18%, transparent), transparent 40%, color-mix(in srgb, var(--bg) 25%, transparent))",
+        }}
+      />
+    </div>
   );
 }

@@ -42,8 +42,15 @@ pub enum SolanaError {
     BadSignature(String),
     #[error("decode: {0}")]
     Decode(#[from] np::DecodeError),
+    /// Returned by future helpers that surface a confirmed-but-failed tx
+    /// to the caller (e.g. SDK consumers awaiting finality). Kept on the
+    /// public error surface so the variant is wire-stable.
+    #[allow(dead_code)]
     #[error("transaction failed: {0:?}")]
     TxFailed(Box<solana_transaction_error::TransactionError>),
+    /// Returned when `tx_status` was polled before the cluster has seen
+    /// the signature. Public for the same reason as `TxFailed`.
+    #[allow(dead_code)]
     #[error("transaction not landed yet")]
     TxPending,
 }

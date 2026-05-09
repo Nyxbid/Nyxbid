@@ -1,61 +1,33 @@
+import Link from "next/link";
+
 import { fetchJson } from "@/lib/api";
 import type { Intent } from "@/lib/data";
+import { LiveIntentsTable } from "@/components/live-intents-table";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function IntentsPage() {
-  const intents = await fetchJson<Intent[]>("/api/intents").catch(() => []);
+  const intents = await fetchJson<Intent[]>("/api/intents").catch(
+    () => [] as Intent[],
+  );
 
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight">Intents</h1>
-      <p className="mt-1 text-sm text-muted">
-        Every intent posted to the venue, open or settled.
-      </p>
-
-      <div className="mt-6 overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border bg-card text-xs uppercase tracking-wide text-muted">
-              <th className="px-4 py-3 font-medium">Intent</th>
-              <th className="px-4 py-3 font-medium">Side</th>
-              <th className="px-4 py-3 font-medium text-right">Size</th>
-              <th className="px-4 py-3 font-medium text-right">Limit</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium text-right">Reveal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {intents.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-8 text-center text-sm text-muted"
-                >
-                  No intents yet.
-                </td>
-              </tr>
-            ) : (
-              intents.map((i) => (
-                <tr
-                  key={i.id}
-                  className="border-b border-border last:border-0"
-                >
-                  <td className="px-4 py-3 font-mono text-xs">{i.id}</td>
-                  <td className="px-4 py-3 text-xs uppercase">{i.side}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{i.size}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {i.limit_price}
-                  </td>
-                  <td className="px-4 py-3 text-xs">{i.status}</td>
-                  <td className="px-4 py-3 text-right text-xs text-muted">
-                    {new Date(i.reveal_deadline).toLocaleTimeString()}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <PageHeader
+        title="Intents"
+        eyebrow="Order book"
+        actions={
+          <Link
+            href="/trade"
+            className="inline-flex h-9 items-center rounded-[var(--r-sm)] bg-[var(--accent)] px-3.5 text-[12px] font-medium tracking-tight text-[var(--accent-fg)] transition-colors hover:bg-[var(--accent-soft)]"
+          >
+            New intent
+          </Link>
+        }
+      />
+      <div className="mt-8">
+        <LiveIntentsTable initial={intents} />
       </div>
     </>
   );

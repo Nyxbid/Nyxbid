@@ -1,65 +1,483 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fafafa;
-  --foreground: #18181b;
-  --card: #ffffff;
-  --border: #e4e4e7;
-  --muted: #71717a;
-  --accent: #0284c7;
-}
+/*
+  ─── Unified palette ────────────────────────────────────────────────
+  One world for the whole site. Both dashboard and marketing surfaces
+  live on the same deep cobalt-navy base; only the *role* of each
+  token changes. The marketing surface adds an opt-in cream variant
+  via .lp-cream for editorial contrast.
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #f4f4f5;
-    --card: #18181b;
-    --border: #27272a;
-    --muted: #a1a1aa;
-    --accent: #38bdf8;
-  }
+  We deliberately picked cobalt over teal — the previous teal felt
+  generic; the deeper navy reads more "Comet" without copying it.
+*/
+
+:root {
+  /* base */
+  --bg: #0a1626;
+  --bg-elev: #0d1c30;
+  --surface: #11223d;
+  --surface-2: #172c4a;
+  --surface-3: #1e3658;
+  --hairline: #1a2c47;
+  --hairline-strong: #28456a;
+
+  /* type */
+  --fg: #ece5d4;
+  --fg-soft: #cfc8b8;
+  --muted: #8a99b3;
+  --faint: #4f617a;
+
+  /* brand accent — cobalt */
+  --accent: #5e8fcc;
+  --accent-soft: #82a8de;
+  --accent-fg: #08111e;
+
+  /* warm secondary used on illustration accents */
+  --warm: #e89060;
+
+  /* trade semantic */
+  --buy: #5dba84;
+  --sell: #d2877a;
+  --warn: #d4a96a;
+  --err: #d2877a;
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-border: var(--border);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--surface);
+  --color-card-2: var(--surface-2);
+  --color-border: var(--hairline);
+  --color-border-strong: var(--hairline-strong);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-accent: var(--accent);
+  --color-buy: var(--buy);
+  --color-sell: var(--sell);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --animate-fade-in: fade-in 0.3s ease-out;
-  --animate-slide-in-from-top: slide-in-from-top 0.2s ease-out;
+  --font-serif: var(--font-serif);
+
+  --animate-toast-in: toast-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-row-flash: row-flash 1.4s ease-out;
+  --animate-slow-pulse: slow-pulse 2.4s ease-in-out infinite;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--bg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01" 1, "cv11" 1, "ss03" 1;
+  letter-spacing: -0.005em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
-  border-color: var(--border);
+  border-color: var(--hairline);
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/*
+  Dashboard atmosphere — quiet noise. Marketing surfaces (`.lp`) opt
+  out and run their own heavier grain stack.
+*/
+body:not(:has(.lp))::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  mix-blend-mode: overlay;
 }
 
-@keyframes slide-in-from-top {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
+#__next, main, header, aside, footer {
+  position: relative;
+  z-index: 1;
+}
+
+*:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Wallet adapter modal — match brand. */
+.wallet-adapter-modal-wrapper {
+  background: var(--surface) !important;
+  color: var(--fg) !important;
+  border: 1px solid var(--hairline-strong) !important;
+}
+.wallet-adapter-modal-button-close { background: var(--surface-2) !important; }
+.wallet-adapter-button-trigger {
+  background: var(--accent) !important;
+  color: var(--accent-fg) !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--hairline) !important;
+}
+
+/* ── keyframes ─────────────────────────────────────────────────── */
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes row-flash {
+  0% { background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
+  100% { background-color: transparent; }
+}
+@keyframes slow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── product primitives (dashboard) ────────────────────────────── */
+
+@layer components {
+  .input {
+    width: 100%;
+    height: 2.5rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--hairline-strong);
+    background: var(--surface-2);
+    padding-inline: 0.75rem;
+    color: var(--fg);
+    font-family: var(--font-geist-mono);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 120ms ease, background-color 120ms ease;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .input::placeholder { color: var(--faint); }
+  .input:hover { background: var(--surface); }
+  .input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface);
   }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+  .card-2 {
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+  }
+
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--hairline-strong) 30%,
+      var(--hairline-strong) 70%,
+      transparent
+    );
+  }
+
+  .row-flash { animation: var(--animate-row-flash); }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--fg);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
+/*
+  ════════════════════════════════════════════════════════════════════
+  ─── Marketing surface (.lp scope) ──────────────────────────────────
+  ════════════════════════════════════════════════════════════════════
+  Editorial cosmic skin shared across `/` and `/docs`. No literal
+  planets, no orbital curves, no copycat decoration. Just deep navy +
+  visible film grain + serif display type.
+*/
+
+.lp {
+  /* mirror the product palette */
+  --lp-cosmos: var(--bg-elev);
+  --lp-cosmos-deep: var(--bg);
+  --lp-cosmos-rim: var(--hairline-strong);
+
+  --lp-cream: #ece5d4;
+  --lp-cream-soft: #e2dac7;
+  --lp-cream-edge: #d6cdb8;
+
+  --lp-ink: #08111e;
+
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.lp ::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* ── grain backgrounds ──────────────────────────────────────────── */
+
+/*
+  Cosmic surface. Single-direction soft gradient + heavy fractal
+  paper grain + a finer "film" grain. No radial vignette — the
+  previous version's bottom radial created the awful "two bright
+  curves" the user flagged. Now sections meet flat.
+*/
+.lp-cosmos {
+  position: relative;
+  background: linear-gradient(180deg, var(--lp-cosmos) 0%, var(--lp-cosmos-deep) 100%);
+  color: var(--fg);
+  isolation: isolate;
+  overflow: hidden;
+}
+.lp-cosmos::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.38;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 320px 320px;
+  mix-blend-mode: soft-light;
+}
+.lp-cosmos::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='2.6' numOctaves='1' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
+.lp-cosmos > * { position: relative; z-index: 1; }
+
+/*
+  Cream paper variant — long-form prose / contrast section. Much
+  warmer paper grain than the cosmic side.
+*/
+.lp-cream {
+  position: relative;
+  background: var(--lp-cream);
+  color: var(--lp-ink);
+  isolation: isolate;
+  overflow: hidden;
+}
+.lp-cream::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.13  0 0 0 0 0.08  0 0 0 0.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 320px 320px;
+  mix-blend-mode: multiply;
+}
+.lp-cream > * { position: relative; z-index: 1; }
+
+/* ── editorial display type ─────────────────────────────────────── */
+
+.lp-display {
+  font-family: var(--font-serif), "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.022em;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+.lp-display em { font-style: italic; font-weight: 400; }
+
+.lp-eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg) 65%, transparent);
+}
+.lp-cream .lp-eyebrow {
+  color: color-mix(in srgb, var(--lp-ink) 60%, transparent);
+}
+
+/* ── pill CTA ──────────────────────────────────────────────────── */
+
+.lp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 56px;
+  padding-left: 8px;
+  padding-right: 28px;
+  border-radius: 9999px;
+  background: var(--lp-ink);
+  color: var(--lp-cream);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--fg) 18%, transparent) inset,
+    0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  transition: background 160ms ease, color 160ms ease;
+}
+.lp-pill:hover {
+  background: color-mix(in srgb, var(--lp-ink) 80%, var(--accent));
+}
+.lp-pill__disc {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: var(--lp-cream);
+  color: var(--lp-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-link {
+  font-size: 15px;
+  color: color-mix(in srgb, var(--fg) 75%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 25%, transparent);
+  padding-bottom: 1px;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.lp-link:hover { color: var(--fg); border-color: var(--fg); }
+.lp-cream .lp-link {
+  color: color-mix(in srgb, var(--lp-ink) 70%, transparent);
+  border-color: color-mix(in srgb, var(--lp-ink) 25%, transparent);
+}
+.lp-cream .lp-link:hover { color: var(--lp-ink); border-color: var(--lp-ink); }
+
+/*
+  ── docs surface ──────────────────────────────────────────────────
+  Calm reading surface. Same cosmic deep navy, very light grain so
+  long prose stays comfortable.
+*/
+
+.lp-docs {
+  position: relative;
+  background: var(--bg);
+  color: var(--fg);
+  isolation: isolate;
+  min-height: 100vh;
+}
+.lp-docs::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  mix-blend-mode: soft-light;
+}
+.lp-docs > * { position: relative; z-index: 1; }
+
+/* ── docs prose primitives ────────────────────────────────────── */
+
+.lp-docs h1.docs-h1 {
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1.04;
+  letter-spacing: -0.022em;
+  color: var(--fg);
+}
+.lp-docs h1.docs-h1 em { font-style: italic; }
+
+.lp-docs h2.docs-h2 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--fg);
+  scroll-margin-top: 96px;
+}
+.lp-docs h3.docs-h3 {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--fg);
+  scroll-margin-top: 96px;
+}
+
+.lp-docs p.docs-p,
+.lp-docs li.docs-li {
+  color: color-mix(in srgb, var(--fg) 78%, transparent);
+  line-height: 1.7;
+  font-size: 15px;
+}
+.lp-docs strong.docs-strong { color: var(--fg); font-weight: 500; }
+
+.lp-docs a.docs-a {
+  color: var(--accent-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-soft) 35%, transparent);
+}
+.lp-docs a.docs-a:hover {
+  color: var(--fg);
+  border-bottom-color: var(--fg);
+}
+
+.lp-docs code.docs-inline {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 13px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  color: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--hairline-strong) 50%, transparent);
+}
+
+/* docs sidebar nav item */
+.docs-nav-item {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--fg) 65%, transparent);
+  letter-spacing: -0.005em;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+.docs-nav-item:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.docs-nav-item.is-active {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--accent-soft) 14%, transparent);
+  font-weight: 500;
+}
+.docs-nav-group {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: color-mix(in srgb, var(--fg) 50%, transparent);
 }

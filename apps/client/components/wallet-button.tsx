@@ -8,19 +8,21 @@ export function WalletButton() {
   const { setVisible } = useWalletModal();
 
   if (connected && publicKey) {
-    const short = publicKey.toBase58();
-    const display = `${short.slice(0, 4)}...${short.slice(-4)}`;
-
+    const pk = publicKey.toBase58();
+    const display = `${pk.slice(0, 4)}…${pk.slice(-4)}`;
     return (
       <div className="space-y-2">
-        <p className="truncate font-mono text-xs text-muted" title={short}>
-          {display}
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--buy)]" />
+          <p className="truncate font-mono text-[11px] text-foreground" title={pk}>
+            {display}
+          </p>
+        </div>
         <button
           onClick={() => disconnect()}
-          className="w-full rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent/5 hover:text-foreground"
+          className="h-7 w-full rounded-[var(--r-sm)] border border-[var(--hairline-strong)] px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors hover:bg-[var(--surface)] hover:text-foreground"
         >
-          Disconnect
+          disconnect
         </button>
       </div>
     );
@@ -29,9 +31,9 @@ export function WalletButton() {
   return (
     <button
       onClick={() => setVisible(true)}
-      className="w-full rounded-md bg-accent px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent/90"
+      className="h-9 w-full rounded-[var(--r-sm)] bg-[var(--accent)] px-3 text-[12px] font-medium tracking-tight text-[var(--accent-fg)] transition-colors hover:bg-[var(--accent-soft)]"
     >
-      Connect Wallet
+      Connect wallet
     </button>
   );
 }
