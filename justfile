@@ -20,6 +20,10 @@ build-client:
 build-chain:
     cd chain && anchor build
 
+# Refresh the IDL bundled into crates/nyxbid-program after a chain change.
+sync-idl:
+    cp chain/target/idl/nyxbid.json crates/nyxbid-program/idl/nyxbid.json
+
 build: build-server build-client
 
 test-chain:
