@@ -83,7 +83,10 @@ export function TradeForm({ markets }: Props) {
     });
 
     try {
-      const sig = await run({
+      // `run` returns the prepared tx alongside the signature so we
+      // can read the intent PDA without waiting for `state.prepared`
+      // to be flushed by React's async-state batching.
+      const { signature, prepared } = await run({
         taker: publicKey.toBase58(),
         side,
         base_mint: market.base_mint,
@@ -95,12 +98,12 @@ export function TradeForm({ markets }: Props) {
         settle_deadline: settle,
         nonce_hex: nonceHex,
       });
-      const intentPda = state.prepared?.accounts.intent;
+      const intentPda = prepared.accounts.intent;
       toast.update(tid, {
         kind: "success",
         title: "Intent posted",
         body: intentPda ? `${intentPda.slice(0, 8)}…` : undefined,
-        href: explorerTxUrl(sig),
+        href: explorerTxUrl(signature),
         hrefLabel: "View tx",
       });
       if (intentPda) router.push(`/intents/${intentPda}`);

@@ -75,10 +75,27 @@ export function timeUntil(iso: string, nowMs: number = Date.now()): string {
   return `${hrs}h ${mins % 60}m`;
 }
 
-export function explorerTxUrl(sig: string, cluster = "devnet"): string {
+/**
+ * Cluster the explorer should point at. Resolved once at module
+ * load from `NEXT_PUBLIC_SOLANA_CLUSTER` so both server-side and
+ * client-side renders agree, and so a deploy that flips to mainnet
+ * doesn't have to update every call site.
+ *
+ * Valid values per the Solana Explorer URL contract: `devnet`,
+ * `testnet`, `mainnet-beta`, `custom`. Default `devnet` because the
+ * dev stack runs there and we'd rather link to a working explorer
+ * than a dead mainnet page when the env var is absent.
+ */
+const EXPLORER_CLUSTER =
+  process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
+
+export function explorerTxUrl(sig: string, cluster = EXPLORER_CLUSTER): string {
   return `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
 }
 
-export function explorerAccountUrl(pk: string, cluster = "devnet"): string {
+export function explorerAccountUrl(
+  pk: string,
+  cluster = EXPLORER_CLUSTER,
+): string {
   return `https://explorer.solana.com/address/${pk}?cluster=${cluster}`;
 }

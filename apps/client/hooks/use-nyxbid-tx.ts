@@ -46,6 +46,19 @@ const initial: TxState = { phase: "idle" };
  * Jakob's Law: the flow matches the wallet UX every Solana app uses,
  * so users never have to learn a new pattern.
  */
+/**
+ * `run()` returns BOTH the signature and the prepared tx so callers
+ * can read PDAs (e.g. `prepared.accounts.intent`) immediately after
+ * `await run(...)`. Reading them off `state.prepared` after the
+ * await would be wrong: React batches setState calls inside async
+ * fns, so the outer caller's render closure still holds the
+ * pre-run `state`. The return value is the only correct path.
+ */
+export interface TxResult {
+  signature: string;
+  prepared: PreparedTx;
+}
+
 export function useNyxbidTx<P>(prepare: (params: P) => Promise<PreparedTx>) {
   const { publicKey, signTransaction } = useWallet();
   const { connection } = useConnection();
@@ -54,7 +67,7 @@ export function useNyxbidTx<P>(prepare: (params: P) => Promise<PreparedTx>) {
   const reset = useCallback(() => setState(initial), []);
 
   const run = useCallback(
-    async (params: P): Promise<string> => {
+    async (params: P): Promise<TxResult> => {
       if (!publicKey || !signTransaction) {
         const message = "Connect a wallet first.";
         setState({ phase: "error", error: message });
@@ -94,7 +107,7 @@ export function useNyxbidTx<P>(prepare: (params: P) => Promise<PreparedTx>) {
         }
 
         setState({ phase: "confirmed", prepared, signature });
-        return signature;
+        return { signature, prepared };
       } catch (e) {
         const message =
           e instanceof Error ? e.message : "transaction failed";

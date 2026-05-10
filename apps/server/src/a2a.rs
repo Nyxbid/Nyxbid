@@ -98,6 +98,15 @@ pub struct SecurityNone {
 #[derive(Debug, Serialize)]
 pub struct NyxbidExtensions {
     pub solana_program_id: Option<String>,
+    /// Public origin of the operator's Solana RPC endpoint —
+    /// **without credentials**. Some providers (OrbitFlare, Helius,
+    /// Triton) embed the API key in a `?api_key=...` query string on
+    /// the URL the operator drops into `SOLANA_RPC_URL`. The agent
+    /// card is served unauthenticated and cached publicly, so we
+    /// strip everything from `?` onward before it leaves the
+    /// process. Agents that want to talk to the chain themselves
+    /// should bring their own RPC URL anyway; this field is
+    /// informational, not a relay credential.
     pub cluster_rpc_url: Option<String>,
 }
 
@@ -224,7 +233,10 @@ pub async fn agent_card(State(state): State<SharedState>) -> impl IntoResponse {
         supports_authenticated_extended_card: false,
         extensions: NyxbidExtensions {
             solana_program_id: s.solana.as_ref().map(|x| x.program_id.to_string()),
-            cluster_rpc_url: s.solana.as_ref().map(|x| x.rpc_url.clone()),
+            cluster_rpc_url: s
+                .solana
+                .as_ref()
+                .map(|x| public_origin(&x.rpc_url)),
         },
     };
 
@@ -235,4 +247,44 @@ pub async fn agent_card(State(state): State<SharedState>) -> impl IntoResponse {
         ],
         Json(card),
     )
+}
+
+/// Strip everything from `?` onward — i.e. the query-string portion
+/// that some RPC providers use to carry an API key. Used before the
+/// rpc URL is published in the public agent card.
+fn public_origin(url: &str) -> String {
+    match url.split_once('?') {
+        Some((origin, _)) => origin.to_string(),
+        None => url.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::public_origin;
+
+    #[test]
+    fn public_origin_strips_api_key_query() {
+        assert_eq!(
+            public_origin("https://ams.rpc.orbitflare.com?api_key=ORBIT-XXX"),
+            "https://ams.rpc.orbitflare.com",
+        );
+    }
+
+    #[test]
+    fn public_origin_keeps_url_when_no_query() {
+        assert_eq!(
+            public_origin("https://api.devnet.solana.com"),
+            "https://api.devnet.solana.com",
+        );
+    }
+
+    #[test]
+    fn public_origin_strips_only_first_question_mark() {
+        // pathological case — keep the host portion, drop the rest.
+        assert_eq!(
+            public_origin("https://rpc.example.com/foo?a=1?b=2"),
+            "https://rpc.example.com/foo",
+        );
+    }
 }

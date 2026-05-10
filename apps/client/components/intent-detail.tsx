@@ -316,7 +316,7 @@ function CancelCard({ intentId }: { intentId: string }) {
     if (!publicKey) return;
     const tid = toast.push({ kind: "info", title: "Cancelling intent" });
     try {
-      const sig = await run({
+      const { signature: sig } = await run({
         taker: publicKey.toBase58(),
         intent: intentId,
       });
@@ -400,7 +400,7 @@ function SubmitQuoteCard({
       title: "Submitting sealed quote",
     });
     try {
-      const sig = await run({
+      const { signature: sig } = await run({
         maker: publicKey.toBase58(),
         intent: intent.id,
         commitment_hex: commitment,
@@ -512,7 +512,7 @@ function RevealQuoteCard({
 
     const tid = toast.push({ kind: "info", title: "Revealing quote" });
     try {
-      const sig = await run({
+      const { signature: sig } = await run({
         maker: publicKey.toBase58(),
         intent: intent.id,
         quote: myQuote.id,
@@ -596,7 +596,7 @@ function FundEscrowCard({
       title: "Funding maker leg",
     });
     try {
-      const sig = await run({
+      const { signature: sig } = await run({
         maker: publicKey.toBase58(),
         intent: intent.id,
         quote: quote.id,
@@ -648,7 +648,7 @@ function SettleCard({ intent }: { intent: Intent }) {
     if (!publicKey) return;
     const tid = toast.push({ kind: "info", title: "Settling" });
     try {
-      const sig = await run({
+      const { signature: sig } = await run({
         payer: publicKey.toBase58(),
         intent: intent.id,
       });
