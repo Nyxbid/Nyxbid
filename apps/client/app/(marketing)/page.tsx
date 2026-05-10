@@ -56,7 +56,7 @@ function HeroChrome() {
       <div className="pointer-events-auto mx-auto flex max-w-7xl items-center justify-between">
         <Link
           href="/"
-          className="group flex items-center gap-3 text-[26px] tracking-tight text-foreground/95 hover:text-foreground sm:text-[28px] md:gap-3.5 md:text-[32px]"
+          className="group flex items-center gap-1.5 text-[26px] tracking-tight text-foreground/95 hover:text-foreground sm:gap-2 sm:text-[28px] md:text-[32px]"
           style={{ fontFamily: "var(--font-serif)" }}
         >
           <Image
