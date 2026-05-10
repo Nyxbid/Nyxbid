@@ -13,7 +13,8 @@ RUN cargo build --release -p nyxbid-server
 RUN ARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH) && \
     mkdir -p /export/usr/lib/${ARCH} && \
     cp /usr/lib/${ARCH}/libssl.so.3 /export/usr/lib/${ARCH}/ && \
-    cp /usr/lib/${ARCH}/libcrypto.so.3 /export/usr/lib/${ARCH}/
+    cp /usr/lib/${ARCH}/libcrypto.so.3 /export/usr/lib/${ARCH}/ && \
+    cp /usr/lib/${ARCH}/libz.so.1   /export/usr/lib/${ARCH}/
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=builder /src/target/release/nyxbid-server /usr/local/bin/nyxbid-server
