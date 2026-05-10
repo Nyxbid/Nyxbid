@@ -28,6 +28,10 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Nyxbid",
   description: "Sealed-bid OTC for Solana.",
+  icons: {
+    icon: [{ url: "/nyxlogo.png", type: "image/png" }],
+    apple: "/nyxlogo.png",
+  },
 };
 
 export const viewport: Viewport = {
