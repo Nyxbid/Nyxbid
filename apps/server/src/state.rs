@@ -31,6 +31,16 @@ pub struct AppState {
     pub indexer_metrics: Option<Arc<IndexerMetrics>>,
 }
 
+/// Devnet USDC faucet mint. Fallback when no `SolanaClient` is
+/// configured (offline mode); the active client's `usdc_mint` wins
+/// whenever it's available so this constant only matters for the
+/// `cargo run` -> /api/markets path with no `.env` set.
+const DEVNET_USDC_MINT: &str = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+
+/// Wrapped SOL native mint — same address on devnet and mainnet,
+/// so this can stay hardcoded.
+const WSOL_MINT: &str = "So11111111111111111111111111111111111111112";
+
 impl AppState {
     pub fn new(
         solana: Option<SolanaClient>,
@@ -38,11 +48,23 @@ impl AppState {
         chain_tx: broadcast::Sender<ChainEnvelope>,
         indexer_metrics: Option<Arc<IndexerMetrics>>,
     ) -> Self {
+        // Derive the SOL/USDC market from whatever USDC mint the
+        // active SolanaClient is configured with. That way devnet
+        // and mainnet always agree on `quote_mint` without anyone
+        // having to remember to update a hardcoded list — the same
+        // env var (`NYXBID_USDC_MINT`) drives the program's
+        // owner-check, the wallet flow, and the catalog the UI
+        // shows.
+        let quote_mint = solana
+            .as_ref()
+            .map(|s| s.usdc_mint.to_string())
+            .unwrap_or_else(|| DEVNET_USDC_MINT.to_string());
+
         Self {
             markets: vec![Market {
                 symbol: "SOL/USDC".to_string(),
-                base_mint: "So11111111111111111111111111111111111111112".to_string(),
-                quote_mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".to_string(),
+                base_mint: WSOL_MINT.to_string(),
+                quote_mint,
                 min_size: 100_000_000,
             }],
             solana,

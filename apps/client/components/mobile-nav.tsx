@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
+  { href: "/trade", label: "Trade" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/intents", label: "Intents" },
   { href: "/quotes", label: "Quotes" },
@@ -18,41 +20,46 @@ export function MobileNav() {
 
   return (
     <div className="md:hidden">
-      <div className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          nyxbid
+      <div className="flex h-14 items-center justify-between border-b border-[var(--hairline)] px-4">
+        <Link
+          href="/"
+          className="text-[19px] tracking-tight text-foreground/95 hover:text-foreground"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
+          Nyxbid
         </Link>
         <button
           onClick={() => setOpen(!open)}
-          className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-accent/5"
+          className="flex h-9 w-9 items-center justify-center rounded-[var(--r-sm)] text-muted hover:bg-[var(--surface)] hover:text-foreground"
           aria-label="Toggle menu"
         >
           {open ? (
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M5 5l10 10M15 5L5 15" />
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 4l10 10M14 4L4 14" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 5h14M3 10h14M3 15h14" />
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 5h12M3 9h12M3 13h12" />
             </svg>
           )}
         </button>
       </div>
 
       {open && (
-        <div className="border-b border-border bg-card px-4 pb-4 pt-2">
-          <nav className="flex flex-col gap-0.5">
+        <div className="border-b border-[var(--hairline)] px-4 pb-4 pt-2">
+          <nav className="flex flex-col gap-px">
             {nav.map(({ href, label }) => {
-              const active = pathname === href;
+              const active =
+                pathname === href || pathname?.startsWith(`${href}/`);
               return (
                 <Link
                   key={href}
                   href={href}
                   onClick={() => setOpen(false)}
-                  className={`rounded-md px-3 py-2 text-sm font-medium ${
+                  className={`flex h-9 items-center rounded-[var(--r-sm)] px-3 text-[13px] font-medium ${
                     active
-                      ? "bg-accent/10 text-accent"
-                      : "text-muted hover:bg-accent/5 hover:text-foreground"
+                      ? "bg-[var(--surface-2)] text-foreground"
+                      : "text-muted hover:bg-[var(--surface)] hover:text-foreground"
                   }`}
                 >
                   {label}
@@ -60,7 +67,7 @@ export function MobileNav() {
               );
             })}
           </nav>
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="mt-4 border-t border-[var(--hairline)] pt-4">
             <WalletButton />
           </div>
         </div>

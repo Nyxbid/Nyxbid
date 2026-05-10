@@ -1,15 +1,20 @@
+import { fetchJson } from "@/lib/api";
+import type { Intent } from "@/lib/data";
+import { MakerInbox } from "@/components/maker-inbox";
+import { PageHeader } from "@/components/page-header";
+
 export const dynamic = "force-dynamic";
 
-export default function QuotesPage() {
+export default async function QuotesPage() {
+  const intents = await fetchJson<Intent[]>("/api/intents").catch(
+    () => [] as Intent[],
+  );
+
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight">Quotes</h1>
-      <p className="mt-1 text-sm text-muted">
-        Sealed commitments from makers, scoped to an intent.
-      </p>
-
-      <div className="mt-6 rounded-lg border border-border bg-card px-5 py-8 text-center text-sm text-muted">
-        Pick an intent from the Intents page to view its quote stream.
+      <PageHeader title="Maker" eyebrow="Sealed quotes" />
+      <div className="mt-8">
+        <MakerInbox initial={intents} />
       </div>
     </>
   );

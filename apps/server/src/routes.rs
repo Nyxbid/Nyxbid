@@ -38,6 +38,7 @@ use crate::{
 pub fn router() -> Router<SharedState> {
     Router::new()
         .route("/health", get(health))
+        .route("/.well-known/agent-card.json", get(crate::a2a::agent_card))
         .route("/api/dashboard", get(dashboard))
         .route("/api/markets", get(list_markets))
         .route("/api/intents", get(list_intents))
@@ -240,7 +241,9 @@ fn solana_unconfigured() -> (StatusCode, Json<serde_json::Value>) {
         StatusCode::SERVICE_UNAVAILABLE,
         Json(serde_json::json!({
             "error": "solana_unconfigured",
-            "message": "set SOLANA_RPC_URL to enable on-chain tx prep"
+            "message": "Solana RPC is not configured on the server. \
+                        Set SOLANA_RPC_URL in apps/server/.env (or the \
+                        workspace-root .env) and restart the server."
         })),
     )
 }
