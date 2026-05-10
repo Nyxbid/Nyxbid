@@ -47,6 +47,11 @@ async fn main() {
         )
         .init();
 
+    // Eagerly load any A2A agent-card signing material; the lazy
+    // OnceLock would otherwise initialise on the first /agent-card
+    // request and emit "signing enabled" mid-traffic.
+    a2a::jws::init();
+
     let sol = solana::SolanaClient::from_env();
     if sol.is_none() {
         tracing::warn!(

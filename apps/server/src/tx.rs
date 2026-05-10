@@ -203,15 +203,23 @@ pub async fn build_create_intent(
         AccountMeta::new_readonly(np::id::SYSVAR_RENT, false), // rent
     ];
 
-    // -- pull blockhash and assemble the unsigned tx -----------------
+    let create_intent_ix = Instruction {
+        program_id: np::id::PROGRAM,
+        accounts: metas,
+        data,
+    };
+
+    // Prepend an idempotent ATA-create for `taker_source`. Without
+    // this, a wallet that has never held `lock_mint` hits the chain
+    // with a non-existent account and the program rejects with Anchor
+    // 3012 (`AccountNotInitialized`). `create_idempotent` no-ops if
+    // the account already exists, so it's free for repeat traders.
+    let ata_ix = create_idempotent_ata_ix(&taker, &taker_source_ata, &taker, &lock_mint);
+
     finalize_tx(
         sol,
         &taker,
-        Instruction {
-            program_id: np::id::PROGRAM,
-            accounts: metas,
-            data,
-        },
+        vec![ata_ix, create_intent_ix],
         PreparedAccounts {
             intent: Some(intent_pda.to_string()),
             escrow: Some(escrow_pda.to_string()),
@@ -220,6 +228,32 @@ pub async fn build_create_intent(
         },
     )
     .await
+}
+
+/// SPL Associated Token Account program — `CreateIdempotent`
+/// instruction (variant tag `1`). Creates the ATA if missing,
+/// no-ops if it already exists. Always cheap to include in front of
+/// any instruction that touches an ATA the user may not have funded
+/// yet. Account order is fixed by the SPL ATA program; do not
+/// reorder.
+fn create_idempotent_ata_ix(
+    payer: &Pubkey,
+    ata: &Pubkey,
+    wallet: &Pubkey,
+    mint: &Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id: np::id::ASSOCIATED_TOKEN,
+        accounts: vec![
+            AccountMeta::new(*payer, true),                   // funding (signer, mut)
+            AccountMeta::new(*ata, false),                    // ata (mut)
+            AccountMeta::new_readonly(*wallet, false),        // wallet
+            AccountMeta::new_readonly(*mint, false),          // mint
+            AccountMeta::new_readonly(np::id::SYSTEM, false), // system_program
+            AccountMeta::new_readonly(np::id::TOKEN, false),  // token_program
+        ],
+        data: vec![1u8],
+    }
 }
 
 // ---- submit_quote --------------------------------------------------
@@ -265,11 +299,11 @@ pub async fn build_submit_quote(
     let prepared = finalize_tx(
         sol,
         &maker,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             quote: Some(quote_pda.to_string()),
             reputation: Some(reputation_pda.to_string()),
@@ -326,11 +360,11 @@ pub async fn build_reveal_quote(
     finalize_tx(
         sol,
         &maker,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             quote: Some(quote.to_string()),
             ..Default::default()
@@ -408,11 +442,11 @@ pub async fn build_fund_maker_escrow(
     finalize_tx(
         sol,
         &maker,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             escrow: Some(escrow_pda.to_string()),
             maker_vault: Some(maker_vault_pda.to_string()),
@@ -511,11 +545,11 @@ pub async fn build_settle(
     finalize_tx(
         sol,
         &payer,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             receipt: Some(receipt_pda.to_string()),
             escrow: Some(escrow_pda.to_string()),
@@ -566,11 +600,11 @@ pub async fn build_cancel(
     finalize_tx(
         sol,
         &taker,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             escrow: Some(escrow_acc_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
@@ -633,11 +667,11 @@ pub async fn build_expire_with_maker(
     finalize_tx(
         sol,
         &payer,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             escrow: Some(escrow_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
@@ -713,11 +747,11 @@ pub async fn build_expire_no_maker(
     finalize_tx(
         sol,
         &payer,
-        Instruction {
+        vec![Instruction {
             program_id: np::id::PROGRAM,
             accounts: metas,
             data,
-        },
+        }],
         PreparedAccounts {
             escrow: Some(escrow_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
@@ -753,14 +787,18 @@ fn mul_div(a: u64, b: u64, scale: u64) -> Option<u64> {
 
 /// Pull the latest blockhash, build the unsigned `Transaction`, and
 /// serialise it for the wire. Shared by every builder above.
+///
+/// Accepts a Vec so builders can prepend setup instructions (e.g. ATA
+/// `create_idempotent`) before the program call. Single-instruction
+/// builders pass `vec![ix]`.
 async fn finalize_tx(
     sol: &SolanaClient,
     fee_payer: &Pubkey,
-    ix: Instruction,
+    ixs: Vec<Instruction>,
     accounts: PreparedAccounts,
 ) -> Result<PreparedTx, TxBuildError> {
     let (blockhash, last_valid_block_height) = sol.latest_blockhash().await?;
-    let message = Message::new_with_blockhash(&[ix], Some(fee_payer), &blockhash);
+    let message = Message::new_with_blockhash(&ixs, Some(fee_payer), &blockhash);
     let tx = Transaction::new_unsigned(message.clone());
     let tx_bytes = bincode::serialize(&tx)?;
     let msg_bytes = bincode::serialize(&message)?;

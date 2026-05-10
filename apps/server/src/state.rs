@@ -4,6 +4,7 @@ use tokio::sync::{broadcast, RwLock};
 
 use nyxbid_types::Market;
 
+use crate::a2a::{PushNotificationStore, TaskStore};
 use crate::indexer::{ChainEnvelope, IndexerMetrics};
 use crate::solana::SolanaClient;
 use crate::store::SharedStore;
@@ -29,6 +30,13 @@ pub struct AppState {
     pub chain_tx: broadcast::Sender<ChainEnvelope>,
     /// Indexer health counters, surfaced via `/health`.
     pub indexer_metrics: Option<Arc<IndexerMetrics>>,
+    /// In-memory A2A task registry. Backs `tasks/get` and
+    /// `tasks/cancel` JSON-RPC methods. Cheap to clone (`Arc`).
+    pub tasks: TaskStore,
+    /// Per-task webhook configurations. Backs the
+    /// `tasks/pushNotificationConfig/*` JSON-RPC methods and the
+    /// task-state-change firing in [`crate::a2a::rpc`].
+    pub push_notifications: PushNotificationStore,
 }
 
 /// Devnet USDC faucet mint. Fallback when no `SolanaClient` is
@@ -71,6 +79,8 @@ impl AppState {
             store,
             chain_tx,
             indexer_metrics,
+            tasks: TaskStore::new(),
+            push_notifications: PushNotificationStore::new(),
         }
     }
 }
