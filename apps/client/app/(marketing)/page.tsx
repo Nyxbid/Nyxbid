@@ -56,10 +56,18 @@ function HeroChrome() {
       <div className="pointer-events-auto mx-auto flex max-w-7xl items-center justify-between">
         <Link
           href="/"
-          className="text-[20px] tracking-tight text-foreground/95 hover:text-foreground"
+          className="group flex items-center gap-3 text-[26px] tracking-tight text-foreground/95 hover:text-foreground sm:text-[28px] md:gap-3.5 md:text-[32px]"
           style={{ fontFamily: "var(--font-serif)" }}
         >
-          Nyxbid
+          <Image
+            src="/logo.png"
+            alt=""
+            width={40}
+            height={40}
+            className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10 md:h-11 md:w-11"
+            priority
+          />
+          <span>Nyxbid</span>
         </Link>
         <Link
           href="https://github.com/Nyxbid/Nyxbid"
