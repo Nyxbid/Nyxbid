@@ -23,7 +23,7 @@ interface Props {
 const FALLBACK_MARKET: Market = {
   symbol: "SOL/USDC",
   base_mint: "So11111111111111111111111111111111111111112",
-  quote_mint: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  quote_mint: "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr",
   min_size: 100_000_000,
   base_decimals: 9,
   quote_decimals: 6,

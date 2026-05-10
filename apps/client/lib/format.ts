@@ -12,8 +12,11 @@ export const PRICE_SCALE = 1_000_000;
 const MINT_DECIMALS: Record<string, number> = {
   // WSOL
   So11111111111111111111111111111111111111112: 9,
-  // Devnet USDC faucet mint
+  // Devnet USDC faucet mint (spl-token-faucet.com)
   "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU": 6,
+  // Devnet USDC test mint (alt faucet — Nyxbid is configured to this
+  // one in `.env` so the local test wallet's tokens are valid).
+  Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr: 6,
   // Mainnet USDC
   EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 6,
 };
