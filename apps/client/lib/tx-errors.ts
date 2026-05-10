@@ -8,6 +8,52 @@ export interface FriendlyTxError {
   body: string;
 }
 
+/** User closed the wallet or tapped Reject — not an application error. */
+export const WALLET_SIGN_CANCELLED: FriendlyTxError = {
+  title: "Signing cancelled",
+  body: "You closed the wallet or declined this transaction. Nothing was submitted.",
+};
+
+/**
+ * True when the connected wallet refused to sign (no chain submission).
+ * Phantom / Backpack / Solflare all surface slightly different messages —
+ * match names, substrings, and EIP-1193 4001.
+ */
+export function isWalletUserRejection(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  if ("code" in err) {
+    const code = (err as { code?: number }).code;
+    if (code === 4001) return true;
+  }
+  const name =
+    err instanceof Error && typeof err.name === "string" ? err.name : "";
+  const raw = rawMessage(err);
+  const s = raw.toLowerCase();
+  const looksRejected =
+    s.includes("user rejected") ||
+    s.includes("rejected the request") ||
+    s.includes("approval denied") ||
+    s.includes("request rejected") ||
+    s.includes("user denied") ||
+    s.includes("cancelled") ||
+    s.includes("canceled");
+  if (looksRejected) return true;
+  // Wallet adapter uses these class names almost exclusively for "user
+  // closed the prompt" — but we still require a soft signal in the text
+  // so we do not swallow unrelated signing failures that reuse the name.
+  if (
+    name === "WalletSignTransactionError" ||
+    name === "WalletSendTransactionError"
+  ) {
+    return (
+      s.includes("reject") ||
+      s.includes("denied") ||
+      s.includes("cancel")
+    );
+  }
+  return false;
+}
+
 /** Normalize any thrown value to a single searchable string. */
 function rawMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -54,12 +100,11 @@ export function friendlyTxError(err: unknown): FriendlyTxError {
     s.includes("user rejected") ||
     s.includes("rejected the request") ||
     s.includes("approval denied") ||
-    s.includes("wallet signing request")
+    s.includes("wallet signing request") ||
+    s.includes("request rejected") ||
+    s.includes("user denied")
   ) {
-    return {
-      title: "Wallet cancelled",
-      body: "You closed the wallet or declined the signature.",
-    };
+    return WALLET_SIGN_CANCELLED;
   }
 
   if (

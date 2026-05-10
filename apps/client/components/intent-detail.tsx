@@ -19,7 +19,7 @@ import {
   shortPk,
   timeAgo,
 } from "@/lib/format";
-import { friendlyTxError } from "@/lib/tx-errors";
+import { friendlyTxError, WALLET_SIGN_CANCELLED } from "@/lib/tx-errors";
 import { useLiveResource } from "@/hooks/use-live-list";
 import { useNyxbidTx } from "@/hooks/use-nyxbid-tx";
 import { useToast } from "@/components/toast";
@@ -326,14 +326,18 @@ function CancelCard({ intentId }: { intentId: string }) {
     if (!publicKey) return;
     const tid = toast.push({ kind: "info", title: "Cancelling intent" });
     try {
-      const { signature: sig } = await run({
+      const out = await run({
         taker: publicKey.toBase58(),
         intent: intentId,
       });
+      if (!out) {
+        toast.update(tid, { kind: "info", ...WALLET_SIGN_CANCELLED });
+        return;
+      }
       toast.update(tid, {
         kind: "success",
         title: "Cancelled",
-        href: explorerTxUrl(sig),
+        href: explorerTxUrl(out.signature),
         hrefLabel: "View tx",
       });
     } catch (e) {
@@ -410,12 +414,17 @@ function SubmitQuoteCard({
       title: "Submitting sealed quote",
     });
     try {
-      const { signature: sig } = await run({
+      const out = await run({
         maker: publicKey.toBase58(),
         intent: intent.id,
         commitment_hex: commitment,
         nonce_hex: bytesToHex(submitNonce),
       });
+      if (!out) {
+        toast.update(tid, { kind: "info", ...WALLET_SIGN_CANCELLED });
+        return;
+      }
+      const sig = out.signature;
 
       // Stash the reveal secret keyed by intent so the maker can
       // reveal later without retyping. localStorage is fine for
@@ -522,7 +531,7 @@ function RevealQuoteCard({
 
     const tid = toast.push({ kind: "info", title: "Revealing quote" });
     try {
-      const { signature: sig } = await run({
+      const out = await run({
         maker: publicKey.toBase58(),
         intent: intent.id,
         quote: myQuote.id,
@@ -530,10 +539,14 @@ function RevealQuoteCard({
         revealed_size: sizeMinor,
         commit_nonce_hex: nonce,
       });
+      if (!out) {
+        toast.update(tid, { kind: "info", ...WALLET_SIGN_CANCELLED });
+        return;
+      }
       toast.update(tid, {
         kind: "success",
         title: "Quote revealed",
-        href: explorerTxUrl(sig),
+        href: explorerTxUrl(out.signature),
         hrefLabel: "View tx",
       });
     } catch (e) {
@@ -602,16 +615,20 @@ function FundEscrowCard({
       title: "Funding maker leg",
     });
     try {
-      const { signature: sig } = await run({
+      const out = await run({
         maker: publicKey.toBase58(),
         intent: intent.id,
         quote: quote.id,
         amount: amt,
       });
+      if (!out) {
+        toast.update(tid, { kind: "info", ...WALLET_SIGN_CANCELLED });
+        return;
+      }
       toast.update(tid, {
         kind: "success",
         title: "Maker leg funded",
-        href: explorerTxUrl(sig),
+        href: explorerTxUrl(out.signature),
         hrefLabel: "View tx",
       });
     } catch (e) {
@@ -650,15 +667,19 @@ function SettleCard({ intent }: { intent: Intent }) {
     if (!publicKey) return;
     const tid = toast.push({ kind: "info", title: "Settling" });
     try {
-      const { signature: sig } = await run({
+      const out = await run({
         payer: publicKey.toBase58(),
         intent: intent.id,
       });
+      if (!out) {
+        toast.update(tid, { kind: "info", ...WALLET_SIGN_CANCELLED });
+        return;
+      }
       toast.update(tid, {
         kind: "success",
         title: "Settled",
         body: "Atomic SPL transfer + receipt minted",
-        href: explorerTxUrl(sig),
+        href: explorerTxUrl(out.signature),
         hrefLabel: "View tx",
       });
     } catch (e) {

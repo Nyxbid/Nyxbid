@@ -8,7 +8,7 @@ import type { Market } from "@/lib/data";
 import { tx as txApi } from "@/lib/api";
 import { bytesToHex, randomBytes } from "@/lib/commitment";
 import { priceToScaled, explorerTxUrl } from "@/lib/format";
-import { friendlyTxError } from "@/lib/tx-errors";
+import { friendlyTxError, WALLET_SIGN_CANCELLED } from "@/lib/tx-errors";
 import { useNyxbidTx } from "@/hooks/use-nyxbid-tx";
 import { useToast } from "@/components/toast";
 import { ActionButton } from "@/components/action-button";
@@ -93,7 +93,7 @@ export function TradeForm({ markets }: Props) {
       // `run` returns the prepared tx alongside the signature so we
       // can read the intent PDA without waiting for `state.prepared`
       // to be flushed by React's async-state batching.
-      const { signature, prepared } = await run({
+      const out = await run({
         taker: publicKey.toBase58(),
         side,
         base_mint: market.base_mint,
@@ -105,6 +105,14 @@ export function TradeForm({ markets }: Props) {
         settle_deadline: settle,
         nonce_hex: nonceHex,
       });
+      if (!out) {
+        toast.update(tid, {
+          kind: "info",
+          ...WALLET_SIGN_CANCELLED,
+        });
+        return;
+      }
+      const { signature, prepared } = out;
       const intentPda = prepared.accounts.intent;
       toast.update(tid, {
         kind: "success",
