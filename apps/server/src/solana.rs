@@ -74,10 +74,12 @@ pub enum TxStatus {
 /// Thread-safe handle to a configured RPC client.
 #[derive(Clone)]
 pub struct SolanaClient {
+    /// Full RPC URL from env (may include `?api_key=`). Do not log or
+    /// `Debug` this field directly; use [`crate::url_privacy::public_origin`].
     pub rpc_url: String,
     /// WebSocket endpoint used by the log indexer. Derived from
     /// `rpc_url` (https -> wss, http -> ws) unless `SOLANA_WS_URL`
-    /// overrides it.
+    /// overrides it. Same redaction rules as `rpc_url`.
     pub ws_url: String,
     pub program_id: Pubkey,
     pub usdc_mint: Pubkey,
