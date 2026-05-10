@@ -161,7 +161,11 @@ async fn run_subscription(
     chain_tx: &broadcast::Sender<ChainEnvelope>,
     metrics: &IndexerMetrics,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    tracing::info!(ws_url = %sol.ws_url, program = %sol.program_id, "indexer connecting");
+    tracing::info!(
+        ws_url = %crate::url_privacy::public_origin(&sol.ws_url),
+        program = %sol.program_id,
+        "indexer connecting"
+    );
     let pubsub = PubsubClient::new(&sol.ws_url).await?;
     let filter = RpcTransactionLogsFilter::Mentions(vec![sol.program_id.to_string()]);
     let cfg = RpcTransactionLogsConfig {

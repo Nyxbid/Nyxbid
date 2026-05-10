@@ -236,7 +236,7 @@ pub async fn agent_card(State(state): State<SharedState>) -> impl IntoResponse {
             cluster_rpc_url: s
                 .solana
                 .as_ref()
-                .map(|x| public_origin(&x.rpc_url)),
+                .map(|x| crate::url_privacy::public_origin(&x.rpc_url)),
         },
     };
 
@@ -247,44 +247,4 @@ pub async fn agent_card(State(state): State<SharedState>) -> impl IntoResponse {
         ],
         Json(card),
     )
-}
-
-/// Strip everything from `?` onward — i.e. the query-string portion
-/// that some RPC providers use to carry an API key. Used before the
-/// rpc URL is published in the public agent card.
-fn public_origin(url: &str) -> String {
-    match url.split_once('?') {
-        Some((origin, _)) => origin.to_string(),
-        None => url.to_string(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::public_origin;
-
-    #[test]
-    fn public_origin_strips_api_key_query() {
-        assert_eq!(
-            public_origin("https://ams.rpc.orbitflare.com?api_key=ORBIT-XXX"),
-            "https://ams.rpc.orbitflare.com",
-        );
-    }
-
-    #[test]
-    fn public_origin_keeps_url_when_no_query() {
-        assert_eq!(
-            public_origin("https://api.devnet.solana.com"),
-            "https://api.devnet.solana.com",
-        );
-    }
-
-    #[test]
-    fn public_origin_strips_only_first_question_mark() {
-        // pathological case — keep the host portion, drop the rest.
-        assert_eq!(
-            public_origin("https://rpc.example.com/foo?a=1?b=2"),
-            "https://rpc.example.com/foo",
-        );
-    }
 }

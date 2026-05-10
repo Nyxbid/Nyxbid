@@ -87,8 +87,10 @@ pub struct SolanaClient {
 
 impl std::fmt::Debug for SolanaClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::url_privacy::public_origin;
         f.debug_struct("SolanaClient")
-            .field("rpc_url", &self.rpc_url)
+            .field("rpc_url", &public_origin(&self.rpc_url))
+            .field("ws_url", &public_origin(&self.ws_url))
             .field("program_id", &self.program_id.to_string())
             .field("usdc_mint", &self.usdc_mint.to_string())
             .finish()

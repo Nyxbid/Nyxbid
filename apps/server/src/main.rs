@@ -5,6 +5,7 @@ mod solana;
 mod state;
 mod store;
 mod tx;
+mod url_privacy;
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -53,8 +54,9 @@ async fn main() {
              (set SOLANA_RPC_URL in .env or the process environment)"
         );
     } else {
+        let rpc = sol.as_ref().unwrap();
         tracing::info!(
-            rpc_url = %sol.as_ref().unwrap().rpc_url,
+            rpc_url = %url_privacy::public_origin(&rpc.rpc_url),
             "solana client configured"
         );
     }
