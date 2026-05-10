@@ -8,6 +8,7 @@ import type { Market } from "@/lib/data";
 import { tx as txApi } from "@/lib/api";
 import { bytesToHex, randomBytes } from "@/lib/commitment";
 import { priceToScaled, explorerTxUrl } from "@/lib/format";
+import { friendlyTxError } from "@/lib/tx-errors";
 import { useNyxbidTx } from "@/hooks/use-nyxbid-tx";
 import { useToast } from "@/components/toast";
 import { ActionButton } from "@/components/action-button";
@@ -51,30 +52,6 @@ export function TradeForm({ markets }: Props) {
       ? `${(sizeNum * priceNum).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${quote}`
       : `${sizeBaseUnits || "0"} ${base}`;
 
-  // Pre-compute encoded values so the diagnostic strip below can show
-  // exactly what will be sent to the chain. The same numbers are
-  // recomputed inside `submit()` — kept here only for display.
-  const previewSizeMinor = Number.isFinite(sizeNum)
-    ? Math.round(sizeNum * Math.pow(10, market.base_decimals))
-    : 0;
-  const previewPriceScaled =
-    Number.isFinite(priceNum) && priceNum > 0
-      ? priceToScaled(priceNum, market.base_mint, market.quote_mint)
-      : 0;
-  const previewLockMinor =
-    side === "buy"
-      ? Math.floor((previewSizeMinor * previewPriceScaled) / 1_000_000)
-      : previewSizeMinor;
-  const previewLockMint =
-    side === "buy" ? market.quote_mint : market.base_mint;
-  const previewLockToken = side === "buy" ? quote : base;
-  const previewLockHuman =
-    previewLockMinor /
-    Math.pow(
-      10,
-      side === "buy" ? market.quote_decimals : market.base_decimals,
-    );
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!publicKey) {
@@ -99,22 +76,6 @@ export function TradeForm({ markets }: Props) {
       toast.push({ kind: "error", title: "Invalid price" });
       return;
     }
-
-    // Diagnostic: verify the new decimal-aware encoding is loaded.
-    // If priceScaled is in the hundreds-of-millions range for a "100"
-    // input, the client is still on stale code (turbopack cache).
-    console.log("[nyxbid] create_intent →", {
-      side,
-      sizeMinor,
-      priceScaled,
-      lockMint: side === "buy" ? market.quote_mint : market.base_mint,
-      lockMinor:
-        side === "buy"
-          ? Math.floor((sizeMinor * priceScaled) / 1_000_000)
-          : sizeMinor,
-      base_decimals: market.base_decimals,
-      quote_decimals: market.quote_decimals,
-    });
 
     const now = Math.floor(Date.now() / 1000);
     const reveal = now + windowSecs;
@@ -154,11 +115,8 @@ export function TradeForm({ markets }: Props) {
       });
       if (intentPda) router.push(`/intents/${intentPda}`);
     } catch (err) {
-      toast.update(tid, {
-        kind: "error",
-        title: "Failed",
-        body: err instanceof Error ? err.message : "try again",
-      });
+      const { title, body } = friendlyTxError(err);
+      toast.update(tid, { kind: "error", title, body });
     }
   };
 
@@ -227,41 +185,6 @@ export function TradeForm({ markets }: Props) {
           />
           <Row label="Locking" value={lockingHuman} />
           <Row label="Reveal" value={`now + ${windowSecs}s`} />
-        </div>
-
-        {/* Diagnostic strip — surfaces the exact integers the program
-         * will see. If "Lock (minor)" is wildly larger than your wallet
-         * balance, the client is encoding price wrong (stale build). */}
-        <div className="space-y-1.5 rounded-[var(--r-sm)] border border-dashed border-[var(--hairline-strong)] bg-[var(--surface)] p-3 font-mono text-[10px] leading-[1.6] text-faint">
-          <div className="flex justify-between gap-3">
-            <span>size (minor)</span>
-            <span className="tabular-nums text-muted">{previewSizeMinor.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between gap-3">
-            <span>price (scaled)</span>
-            <span className="tabular-nums text-muted">{previewPriceScaled.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between gap-3">
-            <span>lock (minor)</span>
-            <span className="tabular-nums text-muted">
-              {previewLockMinor.toLocaleString()}
-            </span>
-          </div>
-          <div className="flex justify-between gap-3">
-            <span>lock (human)</span>
-            <span className="tabular-nums text-muted">
-              {previewLockHuman.toLocaleString(undefined, {
-                maximumFractionDigits: 6,
-              })}{" "}
-              {previewLockToken}
-            </span>
-          </div>
-          <div className="flex justify-between gap-3">
-            <span>lock mint</span>
-            <span className="truncate text-muted" title={previewLockMint}>
-              {previewLockMint.slice(0, 4)}…{previewLockMint.slice(-4)}
-            </span>
-          </div>
         </div>
 
         <ActionButton

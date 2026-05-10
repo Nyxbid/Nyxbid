@@ -19,6 +19,7 @@ import {
   shortPk,
   timeAgo,
 } from "@/lib/format";
+import { friendlyTxError } from "@/lib/tx-errors";
 import { useLiveResource } from "@/hooks/use-live-list";
 import { useNyxbidTx } from "@/hooks/use-nyxbid-tx";
 import { useToast } from "@/components/toast";
@@ -336,11 +337,7 @@ function CancelCard({ intentId }: { intentId: string }) {
         hrefLabel: "View tx",
       });
     } catch (e) {
-      toast.update(tid, {
-        kind: "error",
-        title: "Cancel failed",
-        body: e instanceof Error ? e.message : undefined,
-      });
+      toast.update(tid, { kind: "error", ...friendlyTxError(e) });
     }
   };
 
@@ -443,11 +440,7 @@ function SubmitQuoteCard({
         hrefLabel: "View tx",
       });
     } catch (e) {
-      toast.update(tid, {
-        kind: "error",
-        title: "Submit failed",
-        body: e instanceof Error ? e.message : undefined,
-      });
+      toast.update(tid, { kind: "error", ...friendlyTxError(e) });
     }
   };
 
@@ -544,11 +537,7 @@ function RevealQuoteCard({
         hrefLabel: "View tx",
       });
     } catch (e) {
-      toast.update(tid, {
-        kind: "error",
-        title: "Reveal failed",
-        body: e instanceof Error ? e.message : undefined,
-      });
+      toast.update(tid, { kind: "error", ...friendlyTxError(e) });
     }
   };
 
@@ -626,11 +615,7 @@ function FundEscrowCard({
         hrefLabel: "View tx",
       });
     } catch (e) {
-      toast.update(tid, {
-        kind: "error",
-        title: "Fund failed",
-        body: e instanceof Error ? e.message : undefined,
-      });
+      toast.update(tid, { kind: "error", ...friendlyTxError(e) });
     }
   };
 
@@ -677,11 +662,7 @@ function SettleCard({ intent }: { intent: Intent }) {
         hrefLabel: "View tx",
       });
     } catch (e) {
-      toast.update(tid, {
-        kind: "error",
-        title: "Settle failed",
-        body: e instanceof Error ? e.message : undefined,
-      });
+      toast.update(tid, { kind: "error", ...friendlyTxError(e) });
     }
   };
 

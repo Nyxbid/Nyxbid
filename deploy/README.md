@@ -58,3 +58,5 @@ this in production to the public app/docs origins.
 
 For container-based deployments, use the included `docker-compose.yml` as a
 starting point and put Caddy in front of the two published ports.
+
+Agent smoke tests: see [`AGENT_E2E.md`](./AGENT_E2E.md) (curl + SSE against A2A v1).

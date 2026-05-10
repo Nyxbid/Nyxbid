@@ -91,15 +91,15 @@ function ToastItem({
 
   const accent =
     toast.kind === "success"
-      ? "border-emerald-500/40 bg-emerald-500/5"
+      ? "border-emerald-500/50 bg-emerald-500/[0.14] shadow-emerald-900/10"
       : toast.kind === "error"
-        ? "border-rose-500/40 bg-rose-500/5"
-        : "border-border bg-card";
+        ? "border-rose-500/50 bg-rose-500/[0.14] shadow-rose-900/10"
+        : "border-[color-mix(in_srgb,var(--accent)_35%,var(--hairline))] bg-[color-mix(in_srgb,var(--card)_96%,var(--accent)_8%)] ring-1 ring-[color-mix(in_srgb,var(--accent)_18%,transparent)]";
 
   return (
     <div
       role="status"
-      className={`pointer-events-auto w-full max-w-sm animate-toast-in rounded-lg border ${accent} px-4 py-3 shadow-lg shadow-black/5`}
+      className={`pointer-events-auto w-full max-w-sm animate-toast-in rounded-lg border ${accent} px-4 py-3.5 shadow-xl shadow-black/20 backdrop-blur-md`}
     >
       <div className="flex items-start gap-3">
         <span
@@ -112,9 +112,11 @@ function ToastItem({
           }`}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{toast.title}</p>
+          <p className="text-[13px] font-semibold leading-snug text-foreground">
+            {toast.title}
+          </p>
           {toast.body && (
-            <p className="mt-0.5 break-words text-xs text-muted">
+            <p className="mt-1 break-words text-[12px] leading-relaxed text-foreground/85">
               {toast.body}
             </p>
           )}
