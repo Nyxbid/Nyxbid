@@ -1,13 +1,16 @@
 //! Strip credential-bearing query strings from URLs before logging or
 //! publishing them. Some RPC providers put API keys in `?api_key=...`;
 //! those must never reach log aggregators, `Debug` output, or public JSON.
+//!
+//! Used from: `main.rs` (startup log), `indexer.rs` (WS connect log),
+//! `solana.rs` (`Debug` for [`crate::solana::SolanaClient`]), `a2a.rs` (agent card JSON).
 
 /// Drop everything from `?` onward (query string and fragment-style tails).
 ///
 /// The full URL with credentials is still stored on
 /// [`crate::solana::SolanaClient`] for actual RPC/WebSocket calls; this
 /// helper is only for safe surfaces (tracing, `Debug`, agent card).
-pub fn public_origin(url: &str) -> String {
+pub(crate) fn public_origin(url: &str) -> String {
     match url.split_once('?') {
         Some((origin, _)) => origin.to_string(),
         None => url.to_string(),
