@@ -39,6 +39,12 @@ pub fn router() -> Router<SharedState> {
     Router::new()
         .route("/health", get(health))
         .route("/.well-known/agent-card.json", get(crate::a2a::agent_card))
+        .route("/.well-known/jwks.json", get(crate::a2a::jwks))
+        .route(
+            "/agent/authenticatedExtendedCard",
+            get(crate::a2a::extended_agent_card),
+        )
+        .route(crate::a2a::A2A_RPC_PATH, post(crate::a2a::rpc_handler))
         .route("/api/dashboard", get(dashboard))
         .route("/api/markets", get(list_markets))
         .route("/api/intents", get(list_intents))
