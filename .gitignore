@@ -9,3 +9,5 @@ PROJECT.md
 .DS_Store
 */.DS_Store
 /docs
+
+deploy/AGENT_E2E.md
