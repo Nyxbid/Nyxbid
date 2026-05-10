@@ -56,6 +56,10 @@ export interface Market {
   base_mint: string;
   quote_mint: string;
   min_size: number;
+  /** Base mint decimals (e.g. WSOL = 9). */
+  base_decimals: number;
+  /** Quote mint decimals (e.g. USDC = 6). */
+  quote_decimals: number;
 }
 
 export interface DashboardStats {

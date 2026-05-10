@@ -74,6 +74,8 @@ impl AppState {
                 base_mint: WSOL_MINT.to_string(),
                 quote_mint,
                 min_size: 100_000_000,
+                base_decimals: 9,
+                quote_decimals: 6,
             }],
             solana,
             store,

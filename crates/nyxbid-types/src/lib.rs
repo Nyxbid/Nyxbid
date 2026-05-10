@@ -67,6 +67,12 @@ pub struct Market {
     pub base_mint: String,
     pub quote_mint: String,
     pub min_size: u64,
+    /// Base mint decimals (e.g. WSOL = 9). Required by the client to
+    /// encode `size` in minor units and to apply the decimals shift in
+    /// `price = quote-minor-per-base-minor × PRICE_SCALE`.
+    pub base_decimals: u8,
+    /// Quote mint decimals (e.g. USDC = 6).
+    pub quote_decimals: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -73,7 +73,7 @@ export function LiveFillsTable({ initial }: { initial: Fill[] }) {
               </Td>
               <Td align="right">
                 <span className="font-mono text-[12px] tabular-nums">
-                  {formatPrice(f.price)}
+                  {formatPrice(f.price, f.base_mint, f.quote_mint)}
                 </span>
               </Td>
               <Td>

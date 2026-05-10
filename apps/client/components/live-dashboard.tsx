@@ -111,7 +111,7 @@ export function LiveDashboard({
                         </span>
                       </div>
                       <p className="mt-0.5 font-mono text-[11px] tabular-nums text-muted">
-                        {i.size} @ {formatPrice(i.limit_price)}
+                        {i.size} @ {formatPrice(i.limit_price, i.base_mint, i.quote_mint)}
                       </p>
                     </div>
                     <StatusPill status={i.status} />
@@ -144,7 +144,7 @@ export function LiveDashboard({
                       {shortPk(f.intent_id)}
                     </Link>
                     <p className="mt-0.5 font-mono text-[11px] tabular-nums text-muted">
-                      {f.size} @ {formatPrice(f.price)}
+                      {f.size} @ {formatPrice(f.price, f.base_mint, f.quote_mint)}
                     </p>
                   </div>
                   <div className="text-right">

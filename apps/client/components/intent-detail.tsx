@@ -112,7 +112,7 @@ export function IntentDetail({ initialIntent, initialQuotes }: Props) {
           open: `reveal in ${beforeReveal ? "..." : "expired"}`,
           resolved: intent.winning_quote ? "winner picked" : undefined,
           settled: winningQuote
-            ? `@ ${formatPrice(winningQuote.revealed_price ?? 0)}`
+            ? `@ ${formatPrice(winningQuote.revealed_price ?? 0, intent.base_mint, intent.quote_mint)}`
             : undefined,
         }}
       />
@@ -122,6 +122,8 @@ export function IntentDetail({ initialIntent, initialQuotes }: Props) {
           quotes={quotes}
           winningId={intent.winning_quote}
           mePk={me}
+          baseMint={intent.base_mint}
+          quoteMint={intent.quote_mint}
         />
 
         <div className="space-y-4">
@@ -200,7 +202,10 @@ function Header({ intent }: { intent: Intent }) {
       </div>
       <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--hairline)] border-t border-[var(--hairline)] sm:grid-cols-4">
         <Stat label="Size" value={String(intent.size)} />
-        <Stat label="Limit" value={formatPrice(intent.limit_price)} />
+        <Stat
+          label="Limit"
+          value={formatPrice(intent.limit_price, intent.base_mint, intent.quote_mint)}
+        />
         <Stat label="Reveal" value={<Countdown iso={intent.reveal_deadline} />} />
         <Stat label="Resolve" value={<Countdown iso={intent.resolve_deadline} />} />
       </div>
@@ -233,10 +238,14 @@ function QuoteList({
   quotes,
   winningId,
   mePk,
+  baseMint,
+  quoteMint,
 }: {
   quotes: Quote[];
   winningId: string | null;
   mePk: string | null;
+  baseMint: string;
+  quoteMint: string;
 }) {
   return (
     <div className="card">
@@ -286,7 +295,7 @@ function QuoteList({
                   <div className="text-right">
                     {q.revealed && q.revealed_price != null ? (
                       <p className="font-mono text-[13px] tabular-nums text-foreground">
-                        {formatPrice(q.revealed_price)} ×{" "}
+                        {formatPrice(q.revealed_price, baseMint, quoteMint)} ×{" "}
                         {String(q.revealed_size ?? 0)}
                       </p>
                     ) : (
@@ -375,7 +384,11 @@ function SubmitQuoteCard({
 
   const onClick = async () => {
     if (!publicKey) return;
-    const priceScaled = priceToScaled(parseFloat(price));
+    const priceScaled = priceToScaled(
+      parseFloat(price),
+      intent.base_mint,
+      intent.quote_mint,
+    );
     const sizeMinor = parseInt(size, 10);
     if (!Number.isFinite(priceScaled) || priceScaled <= 0) {
       toast.push({ kind: "error", title: "Invalid price" });
@@ -494,14 +507,18 @@ function RevealQuoteCard({
     : null;
 
   const [price, setPrice] = useState(
-    parsed ? formatPrice(parsed.price) : "",
+    parsed ? formatPrice(parsed.price, intent.base_mint, intent.quote_mint) : "",
   );
   const [size, setSize] = useState(parsed ? String(parsed.size) : "");
   const [nonce, setNonce] = useState(parsed ? parsed.commit_nonce_hex : "");
 
   const onClick = async () => {
     if (!publicKey) return;
-    const priceScaled = priceToScaled(parseFloat(price));
+    const priceScaled = priceToScaled(
+      parseFloat(price),
+      intent.base_mint,
+      intent.quote_mint,
+    );
     const sizeMinor = parseInt(size, 10);
     try {
       hexToBytes(nonce); // throws on bad hex
@@ -695,7 +712,11 @@ function TerminalCard({
         <div className="space-y-2.5">
           <Row
             label="Price"
-            value={formatPrice(winning.revealed_price ?? 0)}
+            value={formatPrice(
+              winning.revealed_price ?? 0,
+              intent.base_mint,
+              intent.quote_mint,
+            )}
           />
           <Row label="Size" value={String(winning.revealed_size ?? 0)} />
           <Row label="Maker" value={shortPk(winning.maker)} />

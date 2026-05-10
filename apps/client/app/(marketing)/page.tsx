@@ -133,7 +133,7 @@ function Edge() {
           />
           <CreamRow
             title="Agent-native"
-            body="Identity rides on Google's A2A. Maker bots stream chain events directly; takers post intents from any wallet."
+            body="Discovery and the task lifecycle ride on Google's A2A v1: a signed agent card, a JSON-RPC endpoint, and live SSE event streams. Drop in any A2A client — no SDK, no API key."
           />
         </div>
       </div>
@@ -223,24 +223,36 @@ function Builders() {
         />
 
         <div>
-          <p className="lp-eyebrow">For builders</p>
+          <p className="lp-eyebrow">For agents &amp; builders</p>
           <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
-            Hook in,
+            Spec-compliant.
             <br />
-            <em style={{ color: "var(--accent-soft)" }}>quote the venue.</em>
+            <em style={{ color: "var(--accent-soft)" }}>Agent-native.</em>
           </h2>
           <p className="mt-8 max-w-md text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--fg)_75%,transparent)]">
-            Stream open intents over WebSocket. Sign quote
-            commitments offline. Reveal, fund, and settle from a
-            single signed transaction. The whole protocol fits in a
-            short afternoon.
+            Fetch the signed{" "}
+            <code className="font-mono text-[13px] text-[var(--accent-soft)]">
+              agent-card.json
+            </code>
+            , open one{" "}
+            <code className="font-mono text-[13px] text-[var(--accent-soft)]">
+              message/stream
+            </code>{" "}
+            SSE call, and your bot is live on the venue. JSON-RPC for
+            send / cancel / resubscribe, push webhooks for offline
+            agents, JWS-verified identity end-to-end.
           </p>
+          <ul className="mt-7 space-y-2 text-[13px] font-mono leading-[1.7] text-[color-mix(in_srgb,var(--fg)_72%,transparent)]">
+            <li>· Google A2A v1, not a custom protocol</li>
+            <li>· 9 well-known skills, all map to unsigned txs</li>
+            <li>· No API key, no rate-limit handshake</li>
+          </ul>
           <div className="mt-10 flex flex-wrap items-center gap-6">
-            <Link href="/docs/makers" className="lp-link">
-              Maker guide
-            </Link>
             <Link href="/docs/agents" className="lp-link">
               Agent integration
+            </Link>
+            <Link href="/docs/makers" className="lp-link">
+              Maker mechanics
             </Link>
           </div>
         </div>

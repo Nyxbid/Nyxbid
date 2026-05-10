@@ -161,7 +161,7 @@ function RfqList({ intents }: { intents: Intent[] }) {
               </Td>
               <Td align="right">
                 <span className="font-mono text-[12px] tabular-nums">
-                  {formatPrice(i.limit_price)}
+                  {formatPrice(i.limit_price, i.base_mint, i.quote_mint)}
                 </span>
               </Td>
               <Td>

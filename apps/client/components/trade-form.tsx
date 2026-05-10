@@ -25,6 +25,8 @@ const FALLBACK_MARKET: Market = {
   base_mint: "So11111111111111111111111111111111111111112",
   quote_mint: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
   min_size: 100_000_000,
+  base_decimals: 9,
+  quote_decimals: 6,
 };
 
 export function TradeForm({ markets }: Props) {
@@ -59,8 +61,12 @@ export function TradeForm({ markets }: Props) {
       });
       return;
     }
-    const sizeMinor = Math.round(sizeNum * 1e9);
-    const priceScaled = priceToScaled(priceNum);
+    const sizeMinor = Math.round(sizeNum * Math.pow(10, market.base_decimals));
+    const priceScaled = priceToScaled(
+      priceNum,
+      market.base_mint,
+      market.quote_mint,
+    );
     if (!Number.isFinite(sizeMinor) || sizeMinor <= 0) {
       toast.push({ kind: "error", title: "Invalid size" });
       return;
