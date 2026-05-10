@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Brand } from "@/components/brand";
 import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
@@ -19,13 +20,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-56 shrink-0 border-r border-[var(--hairline)] md:flex md:flex-col">
       <div className="flex h-14 items-center border-b border-[var(--hairline)] px-5">
-        <Link
-          href="/"
-          className="text-[19px] tracking-tight text-foreground/95 hover:text-foreground"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          Nyxbid
-        </Link>
+        <Brand size="sm" />
       </div>
 
       <nav className="flex flex-1 flex-col gap-px px-2.5 pt-3">

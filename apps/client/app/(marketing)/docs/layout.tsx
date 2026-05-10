@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Brand } from "@/components/brand";
 import { GithubIcon } from "@/components/icons";
 
 import { DocsSidebar } from "./_sidebar";
@@ -48,13 +49,7 @@ function DocsChrome() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-7 md:px-10 md:pt-9">
       <div className="pointer-events-auto mx-auto flex max-w-7xl items-center justify-between">
-        <Link
-          href="/"
-          className="text-[20px] tracking-tight text-foreground/95 hover:text-foreground"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          Nyxbid
-        </Link>
+        <Brand size="md" />
         <Link
           href="https://github.com/Nyxbid/Nyxbid"
           target="_blank"

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { Brand } from "@/components/brand";
 import { GithubIcon } from "@/components/icons";
 
 /**
@@ -54,21 +55,7 @@ function HeroChrome() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-7 md:px-10 md:pt-9">
       <div className="pointer-events-auto mx-auto flex max-w-7xl items-center justify-between">
-        <Link
-          href="/"
-          className="group flex items-center gap-1.5 text-[26px] tracking-tight text-foreground/95 hover:text-foreground sm:gap-2 sm:text-[28px] md:text-[32px]"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          <Image
-            src="/logo.png"
-            alt=""
-            width={40}
-            height={40}
-            className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10 md:h-11 md:w-11"
-            priority
-          />
-          <span>Nyxbid</span>
-        </Link>
+        <Brand size="lg" />
         <Link
           href="https://github.com/Nyxbid/Nyxbid"
           target="_blank"
@@ -88,7 +75,7 @@ function Hero() {
     <section className="lp-cosmos">
       <HeroChrome />
       <div className="relative mx-auto max-w-5xl px-6 pb-32 pt-32 text-center md:px-10 md:pb-40 md:pt-40">
-        <p className="lp-eyebrow">Sealed-bid OTC · Solana</p>
+        <p className="lp-eyebrow">Nyxbid · Sealed-bid OTC</p>
         <h1 className="lp-display mt-6 text-[52px] sm:text-[76px] md:text-[96px]">
           Trade in size.
           <br />
@@ -98,8 +85,9 @@ function Hero() {
           className="mx-auto mt-8 max-w-xl text-balance text-[16px] leading-[1.55] text-[color-mix(in_srgb,var(--fg)_72%,transparent)]"
           style={{ fontFamily: "var(--font-geist-sans)" }}
         >
-          A private RFQ venue for OTC-size trades. Sealed bids, atomic
-          settlement, agent-native via A2A.
+          A private venue for moving real size on Solana. Ask for a price,
+          take the best one, settle in a single transaction. Your wallet
+          never leaves your side.
         </p>
 
         <div className="mt-12 flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-7">
@@ -123,25 +111,25 @@ function Edge() {
     <section className="lp-cream">
       <div className="mx-auto grid max-w-6xl gap-16 px-6 py-32 md:grid-cols-[1.1fr_1fr] md:px-10 md:py-40">
         <div>
-          <p className="lp-eyebrow">The edge</p>
+          <p className="lp-eyebrow">Why Nyxbid</p>
           <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
-            Built for the way{" "}
-            <em style={{ color: "var(--accent)" }}>agents trade.</em>
+            A quieter way to{" "}
+            <em style={{ color: "var(--accent)" }}>move size.</em>
           </h2>
         </div>
 
         <div className="space-y-8 self-end pt-2 text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--lp-ink)_72%,transparent)]">
           <CreamRow
-            title="Sealed bids"
-            body="Makers commit hashes, not prices. Nothing leaks on-chain until reveal — no quote-sniping, no copytraders shadowing the book."
+            title="Trade privately"
+            body="Your order doesn’t sit on a public book. Buyers and sellers price each other in private, and the market only sees the result."
           />
           <CreamRow
-            title="Atomic settlement"
-            body="Both legs swap inside a single Solana transaction. No half-fills, no settlement risk, no relayer trust."
+            title="Get a fair fill"
+            body="Multiple parties compete for your trade at once. The best price wins, not the fastest bot."
           />
           <CreamRow
-            title="Agent-native"
-            body="Discovery and the task lifecycle ride on Google's A2A v1: a signed agent card, a JSON-RPC endpoint, and live SSE event streams. Drop in any A2A client — no SDK, no API key."
+            title="Settle without trust"
+            body="Both sides clear in one Solana transaction. No middleman holds your funds, no half-finished trades, no settlement risk."
           />
         </div>
       </div>
@@ -164,18 +152,18 @@ function Movements() {
   const steps = [
     {
       n: "I",
-      title: "Post intent",
-      body: "Taker broadcasts a sealed RFQ with a reveal deadline. Their leg is locked into escrow on the spot.",
+      title: "Ask",
+      body: "Tell the venue what you want to trade and your worst acceptable price. Your funds move into a private escrow until you’re done.",
     },
     {
       n: "II",
-      title: "Sealed quotes",
-      body: "Makers submit hash commitments of (price, size, nonce). The book stays private until the auction closes.",
+      title: "Get quoted",
+      body: "Multiple parties price the trade in sealed envelopes. Nobody — not them, not us — sees a price until everyone is locked in.",
     },
     {
       n: "III",
-      title: "Reveal & settle",
-      body: "Best valid quote wins. Both legs swap atomically through HTLC-style escrow. Receipt is on-chain.",
+      title: "Settle",
+      body: "The best price wins. Both sides clear in one Solana transaction with a clean on-chain receipt. Walk away.",
     },
   ];
   return (
@@ -183,9 +171,9 @@ function Movements() {
       <div className="mx-auto max-w-6xl px-6 py-28 md:px-10 md:py-36">
         <p className="lp-eyebrow">How it works</p>
         <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
-          Three movements,
+          Ask. Get quoted.
           <br />
-          <em>one transaction.</em>
+          <em>Settle.</em>
         </h2>
 
         <div className="mt-20 grid gap-12 md:grid-cols-3 md:gap-10">
@@ -231,36 +219,38 @@ function Builders() {
         />
 
         <div>
-          <p className="lp-eyebrow">For agents &amp; builders</p>
+          <p className="lp-eyebrow">Who it’s for</p>
           <h2 className="lp-display mt-6 text-[40px] sm:text-[52px] md:text-[64px]">
-            Spec-compliant.
+            For people who
             <br />
-            <em style={{ color: "var(--accent-soft)" }}>Agent-native.</em>
+            <em style={{ color: "var(--accent-soft)" }}>don’t want to be seen.</em>
           </h2>
           <p className="mt-8 max-w-md text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--fg)_75%,transparent)]">
-            Fetch the signed{" "}
-            <code className="font-mono text-[13px] text-[var(--accent-soft)]">
-              agent-card.json
-            </code>
-            , open one{" "}
-            <code className="font-mono text-[13px] text-[var(--accent-soft)]">
-              message/stream
-            </code>{" "}
-            SSE call, and your bot is live on the venue. JSON-RPC for
-            send / cancel / resubscribe, push webhooks for offline
-            agents, JWS-verified identity end-to-end.
+            If a slip of size on a public book costs you basis points,
+            Nyxbid is for you. Open the app, post the trade you want, let
+            the market come to you in private, and walk away with a clean
+            fill and a receipt on-chain.
           </p>
-          <ul className="mt-7 space-y-2 text-[13px] font-mono leading-[1.7] text-[color-mix(in_srgb,var(--fg)_72%,transparent)]">
-            <li>· Google A2A v1, not a custom protocol</li>
-            <li>· 9 well-known skills, all map to unsigned txs</li>
-            <li>· No API key, no rate-limit handshake</li>
+          <ul className="mt-7 space-y-3 text-[14px] leading-[1.6] text-[color-mix(in_srgb,var(--fg)_82%,transparent)]">
+            <li>
+              <span className="font-medium text-foreground">Traders</span>{" "}
+              moving real size who don’t want to advertise it.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Treasuries and funds</span>{" "}
+              that need quiet execution and a clear paper trail.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Market makers</span>{" "}
+              who want to quote private flow without a relationship deck.
+            </li>
           </ul>
           <div className="mt-10 flex flex-wrap items-center gap-6">
-            <Link href="/docs/agents" className="lp-link">
-              Agent integration
+            <Link href="/trade" className="lp-link">
+              Open the app
             </Link>
-            <Link href="/docs/makers" className="lp-link">
-              Maker mechanics
+            <Link href="/docs" className="lp-link">
+              How it works
             </Link>
           </div>
         </div>
@@ -301,13 +291,14 @@ function CTA() {
       </div>
 
       <div className="relative mx-auto max-w-3xl px-6 py-40 text-center md:px-10 md:py-52">
-        <p className="lp-eyebrow">The venue</p>
+        <p className="lp-eyebrow">Get started</p>
         <h2 className="lp-display mt-6 text-[44px] sm:text-[60px] md:text-[80px]">
-          Open the <em>venue.</em>
+          Make your next move <em>privately.</em>
         </h2>
         <p className="mx-auto mt-6 max-w-md text-[15px] leading-[1.65] text-[color-mix(in_srgb,var(--fg)_82%,transparent)]">
-          No custody. No relayer keys. Sign once with Phantom,
-          Solflare, or Backpack.
+          Connect a Solana wallet, post the trade you want, let the
+          market quote you in sealed envelopes. No accounts, no
+          custody — just sign and go.
         </p>
         <div className="mt-12 flex justify-center">
           <Link href="/trade" className="lp-pill">

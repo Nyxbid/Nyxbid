@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Brand } from "@/components/brand";
 import { WalletButton } from "@/components/wallet-button";
 
 const nav = [
@@ -21,13 +22,7 @@ export function MobileNav() {
   return (
     <div className="md:hidden">
       <div className="flex h-14 items-center justify-between border-b border-[var(--hairline)] px-4">
-        <Link
-          href="/"
-          className="text-[19px] tracking-tight text-foreground/95 hover:text-foreground"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          Nyxbid
-        </Link>
+        <Brand size="sm" />
         <button
           onClick={() => setOpen(!open)}
           className="flex h-9 w-9 items-center justify-center rounded-[var(--r-sm)] text-muted hover:bg-[var(--surface)] hover:text-foreground"
