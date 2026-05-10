@@ -14,13 +14,13 @@ import {
 export const metadata = {
   title: "Agent integration · Nyxbid",
   description:
-    "Discover the venue over A2A and run a maker bot that quotes private flow.",
+    "Discover the venue over A2A v1 and run a maker bot that quotes private flow.",
 };
 
 /**
  * Agent integration. Tight three-section guide: discover, subscribe,
- * quote. The code block is a sketch — small enough to read in one
- * sitting, large enough to show what the actual loop looks like.
+ * quote. Matches the actual A2A v1 surface served by the Rust server
+ * — see `apps/server/src/a2a/`.
  */
 export default function AgentsPage() {
   return (
@@ -30,50 +30,66 @@ export default function AgentsPage() {
         title={<>Run a <em>maker bot.</em></>}
         description={
           <>
-            Nyxbid is agent-native. Discovery rides on
-            Google&rsquo;s A2A protocol, intents stream over a
-            single WebSocket, and every state transition is a
-            signed Solana transaction. No API key.
+            Nyxbid is agent-native. Discovery and the task lifecycle
+            ride on Google&rsquo;s{" "}
+            <A href="https://a2a-protocol.org/latest/specification/" external>
+              A2A v1 spec
+            </A>
+            . Every state transition is a signed Solana transaction.
+            No API key.
           </>
         }
       />
 
       <H2 id="discover">1. Discover the venue</H2>
       <P>
-        Every Nyxbid deployment publishes an A2A agent card at{" "}
-        <Code>/.well-known/agent.json</Code>. An agent that supports
-        A2A discovery can find the venue, learn its capabilities,
-        and start interacting without a registration step.
+        Every Nyxbid deployment publishes a spec-shaped agent card at{" "}
+        <Code>/.well-known/agent-card.json</Code>. The card lists
+        capabilities, security schemes, transports, and the nine
+        well-known skills. When card signing is enabled the server
+        also exposes <Code>/.well-known/jwks.json</Code> so clients
+        can verify the JWS in <Code>signatures[]</Code>.
       </P>
-      <CodeBlock title="GET /.well-known/agent.json" lang="json">
+      <CodeBlock title="GET /.well-known/agent-card.json" lang="json">
 {`{
+  "protocolVersion": "0.3.0",
   "name": "Nyxbid",
   "description": "Sealed-bid OTC RFQ venue on Solana",
-  "url": "https://nyxbid.app",
-  "capabilities": [
-    "intents.subscribe",
-    "intents.post",
-    "quotes.commit",
-    "quotes.reveal"
+  "url": "https://api.nyxbid.com/api/a2a/v1",
+  "preferredTransport": "JSONRPC",
+  "supportedInterfaces": [
+    { "url": "https://api.nyxbid.com/api/a2a/v1", "transport": "JSONRPC" }
   ],
-  "transports": {
-    "ws": "wss://nyxbid.app/ws",
-    "rpc": "https://nyxbid.app/api"
-  }
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateTransitionHistory": true,
+    "extendedAgentCard": true
+  },
+  "skills": [
+    { "id": "post_intent", "name": "Post intent", "tags": ["taker"] },
+    { "id": "submit_quote", "name": "Submit sealed quote", "tags": ["maker"] },
+    { "id": "reveal_quote", "name": "Reveal quote", "tags": ["maker"] },
+    { "id": "settle", "name": "Settle auction", "tags": ["any"] },
+    { "id": "subscribe_events", "name": "Stream venue events", "tags": ["maker"] }
+  ],
+  "signatures": [{ "header": { "alg": "ES256", "kid": "nyxbid-2026" }, "signature": "…" }]
 }`}
       </CodeBlock>
       <P>
         That&rsquo;s the entire integration handshake. Read the
-        capabilities, pick the ones your bot supports, and connect.
+        capabilities, pick the skills your bot supports, and call them
+        over JSON-RPC.
       </P>
 
-      <H2 id="subscribe">2. Subscribe to open RFQs</H2>
+      <H2 id="subscribe">2. Stream open RFQs</H2>
       <P>
-        Open one WebSocket. The server pushes <Code>intent.opened</Code>,{" "}
-        <Code>quote.committed</Code>, <Code>quote.revealed</Code>,{" "}
-        <Code>intent.awarded</Code>, and{" "}
-        <Code>intent.settled</Code> events for every public lifecycle
-        change.
+        Open one JSON-RPC <Code>message/stream</Code> call against{" "}
+        <Code>POST /api/a2a/v1</Code> with skill{" "}
+        <Code>subscribe_events</Code>. The response is an SSE stream
+        of <Code>TaskStatusUpdateEvent</Code> and{" "}
+        <Code>TaskArtifactUpdateEvent</Code> for every public
+        lifecycle change.
       </P>
       <UL>
         <LI>
@@ -81,49 +97,70 @@ export default function AgentsPage() {
           client-side on the asset pair you want to quote.
         </LI>
         <LI>
-          Reconnect with backoff and replay missed events from the
-          REST endpoint <Code>GET /api/intents?since=&lt;slot&gt;</Code>.
+          Reconnect with{" "}
+          <Code>tasks/resubscribe</Code> to replay state and continue
+          without missing events.
+        </LI>
+        <LI>
+          Prefer push? Register a webhook with{" "}
+          <Code>tasks/pushNotificationConfig/set</Code> and the server
+          will fire on state and artifact changes.
         </LI>
       </UL>
 
       <H2 id="loop">3. The maker loop</H2>
       <P>
-        A complete maker bot fits in &lt;150 lines. The shape:
+        A complete maker bot fits in &lt;200 lines. The shape:
       </P>
       <CodeBlock title="maker-loop.ts" lang="ts">
-{`import { connectVenue, signCommitment, revealQuote } from "./venue";
+{`import { A2AClient } from "./a2a";
 
-const venue = await connectVenue("wss://nyxbid.app/ws");
+const venue = await A2AClient.fromCard(
+  "https://api.nyxbid.com/.well-known/agent-card.json",
+);
 
-for await (const ev of venue.events()) {
-  if (ev.type !== "intent.opened") continue;
-  if (!shouldQuote(ev.intent)) continue;
+// Stream every venue event over SSE.
+const events = venue.stream({
+  skill: "subscribe_events",
+  data: { markets: ["SOL/USDC"] },
+});
+
+for await (const ev of events) {
+  if (ev.kind !== "status-update") continue;
+  if (ev.status.state !== "intent.opened") continue;
+
+  const intent = ev.status.message.parts[0].data;
+  if (!shouldQuote(intent)) continue;
 
   // 1. price the intent off your inventory + risk model
-  const price = price(ev.intent);
+  const price = priceIt(intent);
   const nonce = randomBytes(32);
-  const commitment = sha256(price, ev.intent.size, nonce);
+  const commitment = sha256(price, intent.size, nonce);
 
-  // 2. commit the sealed quote
-  await venue.commit({
-    intentId: ev.intent.id,
-    commitment,
-    bond: 0.001 * LAMPORTS_PER_SOL,
+  // 2. commit the sealed quote — server returns an unsigned tx,
+  //    we sign locally and broadcast through our own RPC.
+  const commitTask = await venue.send({
+    skill: "submit_quote",
+    data: { intent: intent.id, commitment, bond: 1_000_000 },
   });
+  await signAndSend(commitTask.artifacts[0]);
 
-  // 3. wait for the reveal window, then reveal
-  await venue.waitFor("reveal.open", ev.intent.id);
-  await venue.reveal({
-    intentId: ev.intent.id,
-    price,
-    size: ev.intent.size,
-    nonce,
+  // 3. reveal once the reveal window opens
+  await venue.waitFor(intent.id, "reveal.open");
+  const revealTask = await venue.send({
+    skill: "reveal_quote",
+    data: { intent: intent.id, price, size: intent.size, nonce },
   });
+  await signAndSend(revealTask.artifacts[0]);
 
   // 4. if we won, fund the leg
-  const award = await venue.waitFor("intent.awarded", ev.intent.id);
+  const award = await venue.waitFor(intent.id, "intent.awarded");
   if (award.winner === venue.identity) {
-    await venue.fundLeg(ev.intent.id);
+    const settle = await venue.send({
+      skill: "fund_maker_escrow",
+      data: { intent: intent.id },
+    });
+    await signAndSend(settle.artifacts[0]);
   }
 }`}
       </CodeBlock>
@@ -133,6 +170,14 @@ for await (const ev of venue.events()) {
         post on-chain is the only thing it knows until reveal — so
         the bot can run anywhere, including from a laptop, without
         leaking flow.
+      </Callout>
+
+      <Callout kind="info" title="Verify the venue, not just the URL">
+        When card signing is enabled, fetch{" "}
+        <Code>/.well-known/jwks.json</Code> and verify the ES256 JWS
+        in <Code>signatures[]</Code> against the JCS-canonicalized
+        card. That&rsquo;s how you know the agent card you trust today
+        is the same one your bot saw on first run.
       </Callout>
 
       <H2 id="next">Next</H2>
