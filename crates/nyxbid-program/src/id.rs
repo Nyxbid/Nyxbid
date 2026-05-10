@@ -24,3 +24,9 @@ pub const SYSTEM: Pubkey = Pubkey::from_str_const("11111111111111111111111111111
 /// Sysvar: rent. `create_intent` requires this account.
 pub const SYSVAR_RENT: Pubkey =
     Pubkey::from_str_const("SysvarRent111111111111111111111111111111111");
+
+/// Native SOL wrapped as an SPL token (Wrapped SOL / WSOL). The token
+/// program treats this mint specially: lamports inside the token
+/// account are the WSOL balance and `SyncNative` reconciles them.
+pub const NATIVE_MINT: Pubkey =
+    Pubkey::from_str_const("So11111111111111111111111111111111111111112");

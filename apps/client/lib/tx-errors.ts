@@ -31,9 +31,9 @@ export function friendlyTxError(err: unknown): FriendlyTxError {
     s.includes("0x1779")
   ) {
     return {
-      title: "Not enough tokens",
+      title: "Not enough balance",
       body:
-        "For a buy, fund USDC at the venue’s quote mint. For a sell, you need wrapped SOL (WSOL), not native SOL. Try a smaller size or use the devnet faucet for that exact mint.",
+        "Buys lock USDC and sells lock SOL. Add more of the asset you’re posting (or shrink the size) and try again.",
     };
   }
 

@@ -169,22 +169,30 @@ export function TradeForm({ markets }: Props) {
 
       {/* right — summary + cta */}
       <div className="flex flex-col justify-between gap-6 bg-[var(--surface-2)] p-6">
-        <div className="space-y-2.5">
-          <Row label="Market" value={market.symbol} />
-          <Row
-            label="Side"
-            value={
-              <span
-                className={
-                  side === "buy" ? "text-[var(--buy)]" : "text-[var(--sell)]"
-                }
-              >
-                {side.toUpperCase()}
-              </span>
-            }
-          />
-          <Row label="Locking" value={lockingHuman} />
-          <Row label="Reveal" value={`now + ${windowSecs}s`} />
+        <div className="space-y-4">
+          <div className="space-y-2.5">
+            <Row label="Market" value={market.symbol} />
+            <Row
+              label="Side"
+              value={
+                <span
+                  className={
+                    side === "buy" ? "text-[var(--buy)]" : "text-[var(--sell)]"
+                  }
+                >
+                  {side.toUpperCase()}
+                </span>
+              }
+            />
+            <Row label="Locking" value={lockingHuman} />
+            <Row label="Reveal" value={`now + ${windowSecs}s`} />
+          </div>
+
+          <p className="border-t border-[var(--hairline)] pt-4 text-[11px] leading-[1.55] text-muted">
+            {side === "buy"
+              ? `Your ${quote} moves into a private escrow until the auction settles. If nobody fills, you get it back.`
+              : `Your ${base} moves into a private escrow until the auction settles. We handle the SPL plumbing — sign once and you’re done.`}
+          </p>
         </div>
 
         <ActionButton

@@ -216,10 +216,37 @@ pub async fn build_create_intent(
     // the account already exists, so it's free for repeat traders.
     let ata_ix = create_idempotent_ata_ix(&taker, &taker_source_ata, &taker, &lock_mint);
 
+    // If the locked mint is native SOL (WSOL), nobody actually holds
+    // WSOL until they wrap it. Rather than ask the user to wrap by
+    // hand we top up the freshly-created ATA with native lamports and
+    // call `SyncNative`, all inside the same transaction. Result: the
+    // user just signs once and Nyxbid takes care of the SPL plumbing.
+    let wrap_ixs = if lock_mint == np::id::NATIVE_MINT {
+        let lock_amount = match req.side {
+            SideRequest::Buy => quote_notional(req.size, req.limit_price)
+                .ok_or(TxBuildError::ZeroValue)?,
+            SideRequest::Sell => req.size,
+        };
+        if lock_amount == 0 {
+            return Err(TxBuildError::ZeroValue);
+        }
+        vec![
+            system_transfer_ix(&taker, &taker_source_ata, lock_amount),
+            sync_native_ix(&taker_source_ata),
+        ]
+    } else {
+        Vec::new()
+    };
+
+    let mut ixs = Vec::with_capacity(2 + wrap_ixs.len());
+    ixs.push(ata_ix);
+    ixs.extend(wrap_ixs);
+    ixs.push(create_intent_ix);
+
     finalize_tx(
         sol,
         &taker,
-        vec![ata_ix, create_intent_ix],
+        ixs,
         PreparedAccounts {
             intent: Some(intent_pda.to_string()),
             escrow: Some(escrow_pda.to_string()),
@@ -228,6 +255,41 @@ pub async fn build_create_intent(
         },
     )
     .await
+}
+
+/// Mirror of `nyxbid_program`'s on-chain `quote_notional`: fixed-point
+/// `size * price / PRICE_SCALE` in u128 to avoid overflow.
+fn quote_notional(size: u64, price: u64) -> Option<u64> {
+    let n = (size as u128).checked_mul(price as u128)?;
+    let n = n.checked_div(np::state::PRICE_SCALE as u128)?;
+    u64::try_from(n).ok()
+}
+
+/// System program `Transfer` instruction (variant 2). We use this to
+/// fund the user's WSOL token account with native lamports before
+/// `SyncNative` reconciles the balance into a real token amount.
+fn system_transfer_ix(from: &Pubkey, to: &Pubkey, lamports: u64) -> Instruction {
+    let mut data = Vec::with_capacity(12);
+    data.extend_from_slice(&2u32.to_le_bytes());
+    data.extend_from_slice(&lamports.to_le_bytes());
+    Instruction {
+        program_id: np::id::SYSTEM,
+        accounts: vec![
+            AccountMeta::new(*from, true),
+            AccountMeta::new(*to, false),
+        ],
+        data,
+    }
+}
+
+/// SPL Token `SyncNative` instruction (variant 17). Updates a WSOL
+/// token account's balance to match the native lamports held by it.
+fn sync_native_ix(account: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: np::id::TOKEN,
+        accounts: vec![AccountMeta::new(*account, false)],
+        data: vec![17u8],
+    }
 }
 
 /// SPL Associated Token Account program — `CreateIdempotent`
