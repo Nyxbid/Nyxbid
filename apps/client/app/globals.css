@@ -71,6 +71,14 @@
 html {
   color-scheme: dark;
   background: var(--bg);
+  /* Hide the main vertical chrome; wheel / trackpad / keyboard scroll unchanged. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
 body {
@@ -82,6 +90,13 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
 * {
@@ -200,15 +215,6 @@ body:not(:has(.lp))::before {
   background: color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--fg);
 }
-
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--hairline-strong);
-  border-radius: 999px;
-  border: 2px solid var(--bg);
-}
-::-webkit-scrollbar-thumb:hover { background: var(--faint); }
 
 /*
   ════════════════════════════════════════════════════════════════════
