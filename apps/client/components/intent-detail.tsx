@@ -94,11 +94,17 @@ export function IntentDetail({ initialIntent, initialQuotes }: Props) {
   const now = useNow(1000);
   const beforeReveal = new Date(intent.reveal_deadline).getTime() > now;
   const beforeResolve = new Date(intent.resolve_deadline).getTime() > now;
+  // `settle_deadline` was added to the DTO in fix(P2). Guard for older
+  // server responses that may not carry it yet (treat as "unbounded"
+  // so the action card still renders).
+  const beforeSettle = intent.settle_deadline
+    ? new Date(intent.settle_deadline).getTime() > now
+    : true;
 
   const winningQuote = useMemo(
     () =>
       intent.winning_quote
-        ? quotes.find((q) => q.id === intent.winning_quote) ?? null
+        ? (quotes.find((q) => q.id === intent.winning_quote) ?? null)
         : null,
     [quotes, intent.winning_quote],
   );
@@ -143,13 +149,24 @@ export function IntentDetail({ initialIntent, initialQuotes }: Props) {
             !myQuote.revealed && (
               <RevealQuoteCard intent={intent} myQuote={myQuote} />
             )}
-          {intent.status === "resolved" &&
+          {/*
+            Fund-maker-escrow window:
+              - the chain keeps Intent.status == Open right through
+                reveal AND winner-selection; status only flips to
+                Resolved *inside* fund_maker_escrow itself, so the
+                previous `status === "resolved"` gate here meant the
+                card would never appear (by the time status was
+                Resolved, funding had already happened).
+              - The valid window is: status == Open, clock past
+                resolve_deadline, clock before settle_deadline, and
+                a winner has been selected by reveal_quote.
+          */}
+          {intent.status === "open" &&
+            !beforeResolve &&
+            beforeSettle &&
             winningQuote &&
             me === winningQuote.maker && (
-              <FundEscrowCard
-                intent={intent}
-                quote={winningQuote}
-              />
+              <FundEscrowCard intent={intent} quote={winningQuote} />
             )}
           {intent.status === "resolved" && winningQuote && (
             <SettleCard intent={intent} />
@@ -205,22 +222,26 @@ function Header({ intent }: { intent: Intent }) {
         <Stat label="Size" value={String(intent.size)} />
         <Stat
           label="Limit"
-          value={formatPrice(intent.limit_price, intent.base_mint, intent.quote_mint)}
+          value={formatPrice(
+            intent.limit_price,
+            intent.base_mint,
+            intent.quote_mint,
+          )}
         />
-        <Stat label="Reveal" value={<Countdown iso={intent.reveal_deadline} />} />
-        <Stat label="Resolve" value={<Countdown iso={intent.resolve_deadline} />} />
+        <Stat
+          label="Reveal"
+          value={<Countdown iso={intent.reveal_deadline} />}
+        />
+        <Stat
+          label="Resolve"
+          value={<Countdown iso={intent.resolve_deadline} />}
+        />
       </div>
     </div>
   );
 }
 
-function Stat({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="px-4 py-3 first:pl-0 last:pr-0">
       <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
@@ -251,9 +272,7 @@ function QuoteList({
   return (
     <div className="card">
       <div className="flex items-center justify-between border-b border-[var(--hairline)] px-5 py-3">
-        <h2 className="text-[13px] font-medium text-foreground">
-          Quotes
-        </h2>
+        <h2 className="text-[13px] font-medium text-foreground">Quotes</h2>
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
           {quotes.length} sealed
         </p>
@@ -403,11 +422,7 @@ function SubmitQuoteCard({
     const commitNonce = randomBytes(32);
     const submitNonce = randomBytes(16);
     const commitNonceHex = bytesToHex(commitNonce);
-    const commitment = await commitmentHex(
-      priceScaled,
-      sizeMinor,
-      commitNonce,
-    );
+    const commitment = await commitmentHex(priceScaled, sizeMinor, commitNonce);
 
     const tid = toast.push({
       kind: "info",
@@ -509,7 +524,9 @@ function RevealQuoteCard({
     : null;
 
   const [price, setPrice] = useState(
-    parsed ? formatPrice(parsed.price, intent.base_mint, intent.quote_mint) : "",
+    parsed
+      ? formatPrice(parsed.price, intent.base_mint, intent.quote_mint)
+      : "",
   );
   const [size, setSize] = useState(parsed ? String(parsed.size) : "");
   const [nonce, setNonce] = useState(parsed ? parsed.commit_nonce_hex : "");
@@ -579,13 +596,7 @@ function RevealQuoteCard({
   );
 }
 
-function FundEscrowCard({
-  intent,
-  quote,
-}: {
-  intent: Intent;
-  quote: Quote;
-}) {
+function FundEscrowCard({ intent, quote }: { intent: Intent; quote: Quote }) {
   const { publicKey } = useWallet();
   const toast = useToast();
   const { state, run } = useNyxbidTx(txApi.fundMakerEscrow);
@@ -812,13 +823,7 @@ function Input({
   );
 }
 
-function Row({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
       <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">

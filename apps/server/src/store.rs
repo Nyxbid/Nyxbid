@@ -151,10 +151,7 @@ impl Store {
     /// indexer's live stream starts emitting.
     pub async fn cold_start(&mut self, sol: &SolanaClient) -> Result<(), SolanaError> {
         let now = Utc::now();
-        for (pk, intent) in sol
-            .list_program_accounts::<np::state::Intent>()
-            .await?
-        {
+        for (pk, intent) in sol.list_program_accounts::<np::state::Intent>().await? {
             self.intents.insert(
                 pk,
                 IntentRow {
@@ -164,10 +161,7 @@ impl Store {
                 },
             );
         }
-        for (pk, quote) in sol
-            .list_program_accounts::<np::state::Quote>()
-            .await?
-        {
+        for (pk, quote) in sol.list_program_accounts::<np::state::Quote>().await? {
             self.quotes.insert(
                 pk,
                 QuoteRow {
@@ -177,10 +171,7 @@ impl Store {
                 },
             );
         }
-        for (pk, receipt) in sol
-            .list_program_accounts::<np::state::Receipt>()
-            .await?
-        {
+        for (pk, receipt) in sol.list_program_accounts::<np::state::Receipt>().await? {
             self.receipts.insert(
                 pk,
                 ReceiptRow {
@@ -211,23 +202,29 @@ impl Store {
         for update in updates {
             match update {
                 StoreUpdate::Intent(pk, Some(data)) => {
-                    let observed_at = self
-                        .intents
-                        .get(&pk)
-                        .map(|r| r.observed_at)
-                        .unwrap_or(now);
-                    self.intents.insert(pk, IntentRow { pubkey: pk, data, observed_at });
+                    let observed_at = self.intents.get(&pk).map(|r| r.observed_at).unwrap_or(now);
+                    self.intents.insert(
+                        pk,
+                        IntentRow {
+                            pubkey: pk,
+                            data,
+                            observed_at,
+                        },
+                    );
                 }
                 StoreUpdate::Intent(pk, None) => {
                     self.intents.remove(&pk);
                 }
                 StoreUpdate::Quote(pk, Some(data)) => {
-                    let observed_at = self
-                        .quotes
-                        .get(&pk)
-                        .map(|r| r.observed_at)
-                        .unwrap_or(now);
-                    self.quotes.insert(pk, QuoteRow { pubkey: pk, data, observed_at });
+                    let observed_at = self.quotes.get(&pk).map(|r| r.observed_at).unwrap_or(now);
+                    self.quotes.insert(
+                        pk,
+                        QuoteRow {
+                            pubkey: pk,
+                            data,
+                            observed_at,
+                        },
+                    );
                 }
                 StoreUpdate::Quote(pk, None) => {
                     self.quotes.remove(&pk);
@@ -235,7 +232,11 @@ impl Store {
                 StoreUpdate::Receipt(pk, Some(data), sig) => {
                     self.receipts.insert(
                         pk,
-                        ReceiptRow { pubkey: pk, data, tx_signature: sig },
+                        ReceiptRow {
+                            pubkey: pk,
+                            data,
+                            tx_signature: sig,
+                        },
                     );
                 }
                 StoreUpdate::Receipt(pk, None, _) => {
@@ -267,7 +268,9 @@ pub async fn fetch_updates(
     let mut out = Vec::with_capacity(2);
     match &env.event {
         ChainEvent::IntentCreated(e) => {
-            let d = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            let d = sol
+                .get_anchor_account::<np::state::Intent>(&e.intent)
+                .await?;
             out.push(StoreUpdate::Intent(e.intent, d));
         }
         ChainEvent::QuoteSubmitted(e) => {
@@ -277,23 +280,39 @@ pub async fn fetch_updates(
         ChainEvent::QuoteRevealed(e) => {
             let d = sol.get_anchor_account::<np::state::Quote>(&e.quote).await?;
             out.push(StoreUpdate::Quote(e.quote, d));
-            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            let i = sol
+                .get_anchor_account::<np::state::Intent>(&e.intent)
+                .await?;
             out.push(StoreUpdate::Intent(e.intent, i));
         }
         ChainEvent::AuctionResolved(e) => {
-            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            let i = sol
+                .get_anchor_account::<np::state::Intent>(&e.intent)
+                .await?;
             out.push(StoreUpdate::Intent(e.intent, i));
-            let q = sol.get_anchor_account::<np::state::Quote>(&e.winning_quote).await?;
+            let q = sol
+                .get_anchor_account::<np::state::Quote>(&e.winning_quote)
+                .await?;
             out.push(StoreUpdate::Quote(e.winning_quote, q));
         }
         ChainEvent::Settled(e) => {
-            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            let i = sol
+                .get_anchor_account::<np::state::Intent>(&e.intent)
+                .await?;
             out.push(StoreUpdate::Intent(e.intent, i));
-            let r = sol.get_anchor_account::<np::state::Receipt>(&e.receipt).await?;
-            out.push(StoreUpdate::Receipt(e.receipt, r, Some(env.signature.clone())));
+            let r = sol
+                .get_anchor_account::<np::state::Receipt>(&e.receipt)
+                .await?;
+            out.push(StoreUpdate::Receipt(
+                e.receipt,
+                r,
+                Some(env.signature.clone()),
+            ));
         }
         ChainEvent::Cancelled(e) => {
-            let i = sol.get_anchor_account::<np::state::Intent>(&e.intent).await?;
+            let i = sol
+                .get_anchor_account::<np::state::Intent>(&e.intent)
+                .await?;
             out.push(StoreUpdate::Intent(e.intent, i));
         }
     }
@@ -331,6 +350,7 @@ fn intent_to_dto(row: &IntentRow) -> dto::Intent {
         limit_price: i.limit_price,
         reveal_deadline: ts_to_utc(i.reveal_deadline),
         resolve_deadline: ts_to_utc(i.resolve_deadline),
+        settle_deadline: ts_to_utc(i.settle_deadline),
         commitment_root: hex::encode(i.commitment_root),
         status,
         winning_quote,
