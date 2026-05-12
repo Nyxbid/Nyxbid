@@ -29,6 +29,10 @@ pub struct Intent {
     pub limit_price: u64,
     pub reveal_deadline: DateTime<Utc>,
     pub resolve_deadline: DateTime<Utc>,
+    /// Last moment the winning maker can call `settle` before the
+    /// taker can recover via `expire_with_maker`. Needed so the UI can
+    /// time-gate the fund-maker-escrow action.
+    pub settle_deadline: DateTime<Utc>,
     pub commitment_root: String,
     pub status: IntentStatus,
     pub winning_quote: Option<String>,

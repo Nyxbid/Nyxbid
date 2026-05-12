@@ -11,7 +11,7 @@
 //! own. The builder also returns the deterministic PDAs it derived so
 //! the client can render an optimistic UI before the tx lands.
 
-use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
 use nyxbid_program as np;
 use serde::{Deserialize, Serialize};
 use solana_instruction::{AccountMeta, Instruction};
@@ -149,9 +149,7 @@ pub async fn build_create_intent(
     if req.size == 0 || req.limit_price == 0 {
         return Err(TxBuildError::ZeroValue);
     }
-    if !(req.reveal_deadline < req.resolve_deadline
-        && req.resolve_deadline < req.settle_deadline)
-    {
+    if !(req.reveal_deadline < req.resolve_deadline && req.resolve_deadline < req.settle_deadline) {
         return Err(TxBuildError::BadDeadlines);
     }
 
@@ -190,16 +188,16 @@ pub async fn build_create_intent(
     // Account order MUST match `CreateIntent` in
     // chain/programs/nyxbid/src/instructions/create_intent.rs.
     let metas = vec![
-        AccountMeta::new(taker, true),                       // taker (signer, mut)
-        AccountMeta::new_readonly(base_mint, false),         // base_mint
-        AccountMeta::new_readonly(quote_mint, false),        // quote_mint
-        AccountMeta::new(taker_source_ata, false),           // taker_source (mut)
-        AccountMeta::new(intent_pda, false),                 // intent (init)
-        AccountMeta::new(escrow_pda, false),                 // escrow (init)
-        AccountMeta::new(taker_vault_pda, false),            // taker_vault (init)
-        AccountMeta::new_readonly(lock_mint, false),         // taker_lock_mint
-        AccountMeta::new_readonly(np::id::TOKEN, false),     // token_program
-        AccountMeta::new_readonly(np::id::SYSTEM, false),    // system_program
+        AccountMeta::new(taker, true),                    // taker (signer, mut)
+        AccountMeta::new_readonly(base_mint, false),      // base_mint
+        AccountMeta::new_readonly(quote_mint, false),     // quote_mint
+        AccountMeta::new(taker_source_ata, false),        // taker_source (mut)
+        AccountMeta::new(intent_pda, false),              // intent (init)
+        AccountMeta::new(escrow_pda, false),              // escrow (init)
+        AccountMeta::new(taker_vault_pda, false),         // taker_vault (init)
+        AccountMeta::new_readonly(lock_mint, false),      // taker_lock_mint
+        AccountMeta::new_readonly(np::id::TOKEN, false),  // token_program
+        AccountMeta::new_readonly(np::id::SYSTEM, false), // system_program
         AccountMeta::new_readonly(np::id::SYSVAR_RENT, false), // rent
     ];
 
@@ -223,8 +221,9 @@ pub async fn build_create_intent(
     // user just signs once and Nyxbid takes care of the SPL plumbing.
     let wrap_ixs = if lock_mint == np::id::NATIVE_MINT {
         let lock_amount = match req.side {
-            SideRequest::Buy => quote_notional(req.size, req.limit_price)
-                .ok_or(TxBuildError::ZeroValue)?,
+            SideRequest::Buy => {
+                quote_notional(req.size, req.limit_price).ok_or(TxBuildError::ZeroValue)?
+            }
             SideRequest::Sell => req.size,
         };
         if lock_amount == 0 {
@@ -274,10 +273,7 @@ fn system_transfer_ix(from: &Pubkey, to: &Pubkey, lamports: u64) -> Instruction 
     data.extend_from_slice(&lamports.to_le_bytes());
     Instruction {
         program_id: np::id::SYSTEM,
-        accounts: vec![
-            AccountMeta::new(*from, true),
-            AccountMeta::new(*to, false),
-        ],
+        accounts: vec![AccountMeta::new(*from, true), AccountMeta::new(*to, false)],
         data,
     }
 }
@@ -307,12 +303,12 @@ fn create_idempotent_ata_ix(
     Instruction {
         program_id: np::id::ASSOCIATED_TOKEN,
         accounts: vec![
-            AccountMeta::new(*payer, true),                   // funding (signer, mut)
-            AccountMeta::new(*ata, false),                    // ata (mut)
-            AccountMeta::new_readonly(*wallet, false),        // wallet
-            AccountMeta::new_readonly(*mint, false),          // mint
+            AccountMeta::new(*payer, true),            // funding (signer, mut)
+            AccountMeta::new(*ata, false),             // ata (mut)
+            AccountMeta::new_readonly(*wallet, false), // wallet
+            AccountMeta::new_readonly(*mint, false),   // mint
             AccountMeta::new_readonly(np::id::SYSTEM, false), // system_program
-            AccountMeta::new_readonly(np::id::TOKEN, false),  // token_program
+            AccountMeta::new_readonly(np::id::TOKEN, false), // token_program
         ],
         data: vec![1u8],
     }
@@ -414,9 +410,9 @@ pub async fn build_reveal_quote(
     // Account order MUST match `RevealQuote` in
     // chain/programs/nyxbid/src/instructions/reveal_quote.rs.
     let metas = vec![
-        AccountMeta::new(maker, true),  // maker (signer, mut)
+        AccountMeta::new(maker, true),   // maker (signer, mut)
         AccountMeta::new(intent, false), // intent (mut)
-        AccountMeta::new(quote, false), // quote (mut)
+        AccountMeta::new(quote, false),  // quote (mut)
     ];
 
     finalize_tx(
@@ -463,13 +459,13 @@ pub async fn build_fund_maker_escrow(
     let quote_pk = parse_pk("quote", &req.quote)?;
 
     // Need the on-chain `Intent` to figure out the maker-locked mint.
-    let intent_acc: np::state::Intent = sol
-        .get_anchor_account(&intent_pk)
-        .await?
-        .ok_or_else(|| TxBuildError::BadPubkey {
-            field: "intent",
-            error: "intent account not found".to_string(),
-        })?;
+    let intent_acc: np::state::Intent =
+        sol.get_anchor_account(&intent_pk)
+            .await?
+            .ok_or_else(|| TxBuildError::BadPubkey {
+                field: "intent",
+                error: "intent account not found".to_string(),
+            })?;
     let maker_lock_mint = match intent_acc.side {
         x if x == np::params::side::BUY => intent_acc.base_mint, // maker delivers base
         x if x == np::params::side::SELL => intent_acc.quote_mint, // maker delivers quote
@@ -482,33 +478,56 @@ pub async fn build_fund_maker_escrow(
     let (reputation_pda, _) = np::pda::reputation(&maker);
 
     let params = np::params::FundMakerEscrowParams { amount: req.amount };
-    let data =
-        np::params::encode_ix_data(np::discriminator::ix::FUND_MAKER_ESCROW, &params)?;
+    let data = np::params::encode_ix_data(np::discriminator::ix::FUND_MAKER_ESCROW, &params)?;
 
     // Account order MUST match `FundMakerEscrow` in
     // chain/programs/nyxbid/src/instructions/fund_maker_escrow.rs.
     let metas = vec![
-        AccountMeta::new(maker, true),                          // maker (signer, mut)
-        AccountMeta::new(intent_pk, false),                     // intent (mut)
-        AccountMeta::new(quote_pk, false),                      // quote (mut)
-        AccountMeta::new(escrow_pda, false),                    // escrow (mut)
-        AccountMeta::new_readonly(maker_lock_mint, false),      // maker_lock_mint
-        AccountMeta::new(maker_source_ata, false),              // maker_source (mut)
-        AccountMeta::new(maker_vault_pda, false),               // maker_vault (init)
-        AccountMeta::new(reputation_pda, false),                // reputation (mut)
-        AccountMeta::new_readonly(np::id::TOKEN, false),        // token_program
-        AccountMeta::new_readonly(np::id::SYSTEM, false),       // system_program
-        AccountMeta::new_readonly(np::id::SYSVAR_RENT, false),  // rent
+        AccountMeta::new(maker, true),       // maker (signer, mut)
+        AccountMeta::new(intent_pk, false),  // intent (mut)
+        AccountMeta::new(quote_pk, false),   // quote (mut)
+        AccountMeta::new(escrow_pda, false), // escrow (mut)
+        AccountMeta::new_readonly(maker_lock_mint, false), // maker_lock_mint
+        AccountMeta::new(maker_source_ata, false), // maker_source (mut)
+        AccountMeta::new(maker_vault_pda, false), // maker_vault (init)
+        AccountMeta::new(reputation_pda, false), // reputation (mut)
+        AccountMeta::new_readonly(np::id::TOKEN, false), // token_program
+        AccountMeta::new_readonly(np::id::SYSTEM, false), // system_program
+        AccountMeta::new_readonly(np::id::SYSVAR_RENT, false), // rent
     ];
+
+    let fund_ix = Instruction {
+        program_id: np::id::PROGRAM,
+        accounts: metas,
+        data,
+    };
+
+    // Symmetric with `build_create_intent`: prepend an idempotent ATA
+    // create for `maker_source`. Without it, a maker that has never
+    // held the lock mint hits Anchor 3012 (`AccountNotInitialized`).
+    let ata_ix = create_idempotent_ata_ix(&maker, &maker_source_ata, &maker, &maker_lock_mint);
+
+    // If the maker's lock mint is native SOL, wrap exactly `req.amount`
+    // lamports into the freshly-created WSOL ATA, just like the taker
+    // side does at create_intent. Saves the maker a separate wrap tx.
+    let wrap_ixs = if maker_lock_mint == np::id::NATIVE_MINT {
+        vec![
+            system_transfer_ix(&maker, &maker_source_ata, req.amount),
+            sync_native_ix(&maker_source_ata),
+        ]
+    } else {
+        Vec::new()
+    };
+
+    let mut ixs = Vec::with_capacity(2 + wrap_ixs.len());
+    ixs.push(ata_ix);
+    ixs.extend(wrap_ixs);
+    ixs.push(fund_ix);
 
     finalize_tx(
         sol,
         &maker,
-        vec![Instruction {
-            program_id: np::id::PROGRAM,
-            accounts: metas,
-            data,
-        }],
+        ixs,
         PreparedAccounts {
             escrow: Some(escrow_pda.to_string()),
             maker_vault: Some(maker_vault_pda.to_string()),
@@ -542,8 +561,7 @@ pub async fn build_settle(
     // Quote (maker pubkey).
     let intent_acc = require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
     let (escrow_pda, _) = np::pda::escrow(&intent_pk);
-    let escrow_acc =
-        require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
+    let escrow_acc = require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
     let winning_quote_pk = intent_acc.winning_quote;
     let quote_acc =
         require_account::<np::state::Quote>(sol, &winning_quote_pk, "winning_quote").await?;
@@ -585,33 +603,67 @@ pub async fn build_settle(
     // Account order MUST match `Settle` in
     // chain/programs/nyxbid/src/instructions/settle.rs.
     let metas = vec![
-        AccountMeta::new(payer, true),                              // payer (signer, mut)
-        AccountMeta::new(intent_pk, false),                         // intent (mut)
-        AccountMeta::new_readonly(winning_quote_pk, false),         // winning_quote
-        AccountMeta::new(escrow_pda, false),                        // escrow (mut, closes)
-        AccountMeta::new(taker_vault_pda, false),                   // taker_vault (mut)
-        AccountMeta::new(maker_vault_pda, false),                   // maker_vault (mut)
-        AccountMeta::new(maker_destination_ata, false),             // maker_destination
-        AccountMeta::new(taker_destination_ata, false),             // taker_destination
-        AccountMeta::new(taker_refund_destination_ata, false),      // optional refund
-        AccountMeta::new(intent_acc.taker, false),                  // taker_rent_beneficiary
-        AccountMeta::new(maker, false),                             // maker_rent_beneficiary
-        AccountMeta::new(receipt_pda, false),                       // receipt (init)
-        AccountMeta::new(reputation_pda, false),                    // reputation (mut)
-        AccountMeta::new_readonly(intent_acc.base_mint, false),     // base_mint
-        AccountMeta::new_readonly(intent_acc.quote_mint, false),    // quote_mint
-        AccountMeta::new_readonly(np::id::TOKEN, false),            // token_program
-        AccountMeta::new_readonly(np::id::SYSTEM, false),           // system_program
+        AccountMeta::new(payer, true),      // payer (signer, mut)
+        AccountMeta::new(intent_pk, false), // intent (mut)
+        AccountMeta::new_readonly(winning_quote_pk, false), // winning_quote
+        AccountMeta::new(escrow_pda, false), // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false), // taker_vault (mut)
+        AccountMeta::new(maker_vault_pda, false), // maker_vault (mut)
+        AccountMeta::new(maker_destination_ata, false), // maker_destination
+        AccountMeta::new(taker_destination_ata, false), // taker_destination
+        AccountMeta::new(taker_refund_destination_ata, false), // optional refund
+        AccountMeta::new(intent_acc.taker, false), // taker_rent_beneficiary
+        AccountMeta::new(maker, false),     // maker_rent_beneficiary
+        AccountMeta::new(receipt_pda, false), // receipt (init)
+        AccountMeta::new(reputation_pda, false), // reputation (mut)
+        AccountMeta::new_readonly(intent_acc.base_mint, false), // base_mint
+        AccountMeta::new_readonly(intent_acc.quote_mint, false), // quote_mint
+        AccountMeta::new_readonly(np::id::TOKEN, false), // token_program
+        AccountMeta::new_readonly(np::id::SYSTEM, false), // system_program
     ];
+
+    let settle_ix = Instruction {
+        program_id: np::id::PROGRAM,
+        accounts: metas,
+        data,
+    };
+
+    // Prepend idempotent ATA-creates for every destination the
+    // settle ix transfers into. Without these, a fresh wallet that
+    // has never held the destination mint hits Anchor 3012
+    // (`AccountNotInitialized`) and the swap fails.
+    //
+    // The `payer` of the surrounding tx funds the rent (~0.002 SOL per
+    // ATA). That's standard convention: whoever drives settle pays for
+    // the receiving accounts, and the owners can reclaim rent later via
+    // `closeAccount` if they want.
+    let mut ixs: Vec<Instruction> = Vec::with_capacity(4);
+    ixs.push(create_idempotent_ata_ix(
+        &payer,
+        &maker_destination_ata,
+        &maker,
+        &escrow_acc.taker_mint,
+    ));
+    ixs.push(create_idempotent_ata_ix(
+        &payer,
+        &taker_destination_ata,
+        &intent_acc.taker,
+        &escrow_acc.maker_mint,
+    ));
+    if needs_refund {
+        ixs.push(create_idempotent_ata_ix(
+            &payer,
+            &taker_refund_destination_ata,
+            &intent_acc.taker,
+            &escrow_acc.taker_mint,
+        ));
+    }
+    ixs.push(settle_ix);
 
     finalize_tx(
         sol,
         &payer,
-        vec![Instruction {
-            program_id: np::id::PROGRAM,
-            accounts: metas,
-            data,
-        }],
+        ixs,
         PreparedAccounts {
             receipt: Some(receipt_pda.to_string()),
             escrow: Some(escrow_pda.to_string()),
@@ -651,22 +703,31 @@ pub async fn build_cancel(
     // Account order MUST match `Cancel` in
     // chain/programs/nyxbid/src/instructions/cancel.rs.
     let metas = vec![
-        AccountMeta::new(taker, true),                       // taker (signer, mut)
-        AccountMeta::new(intent_pk, false),                  // intent (mut)
-        AccountMeta::new(escrow_acc_pda, false),             // escrow (mut, closes)
-        AccountMeta::new(taker_vault_pda, false),            // taker_vault (mut)
-        AccountMeta::new(taker_destination_ata, false),      // taker_destination
-        AccountMeta::new_readonly(np::id::TOKEN, false),     // token_program
+        AccountMeta::new(taker, true),                   // taker (signer, mut)
+        AccountMeta::new(intent_pk, false),              // intent (mut)
+        AccountMeta::new(escrow_acc_pda, false),         // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),        // taker_vault (mut)
+        AccountMeta::new(taker_destination_ata, false),  // taker_destination
+        AccountMeta::new_readonly(np::id::TOKEN, false), // token_program
+    ];
+
+    // Prepend idempotent ATA-create for `taker_destination`. The
+    // refund target on cancel goes back to the taker's ATA on the
+    // mint they originally locked; if they never had that mint as an
+    // ATA, the chain rejects with Anchor 3012.
+    let ixs = vec![
+        create_idempotent_ata_ix(&taker, &taker_destination_ata, &taker, &escrow.taker_mint),
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
     ];
 
     finalize_tx(
         sol,
         &taker,
-        vec![Instruction {
-            program_id: np::id::PROGRAM,
-            accounts: metas,
-            data,
-        }],
+        ixs,
         PreparedAccounts {
             escrow: Some(escrow_acc_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
@@ -693,19 +754,16 @@ pub async fn build_expire_with_maker(
     let payer = parse_pk("payer", &req.payer)?;
     let intent_pk = parse_pk("intent", &req.intent)?;
 
-    let intent_acc =
-        require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
+    let intent_acc = require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
     let escrow_pda = np::pda::escrow(&intent_pk).0;
-    let escrow_acc =
-        require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
+    let escrow_acc = require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
     let maker = escrow_acc.maker;
 
     let taker_vault_pda = np::pda::taker_vault(&intent_pk).0;
     let maker_vault_pda = np::pda::maker_vault(&intent_pk).0;
     let taker_destination_ata =
         np::pda::associated_token(&intent_acc.taker, &escrow_acc.taker_mint).0;
-    let maker_destination_ata =
-        np::pda::associated_token(&maker, &escrow_acc.maker_mint).0;
+    let maker_destination_ata = np::pda::associated_token(&maker, &escrow_acc.maker_mint).0;
     let reputation_pda = np::pda::reputation(&maker).0;
 
     let data = np::params::encode_empty_ix_data(np::discriminator::ix::EXPIRE_WITH_MAKER);
@@ -713,27 +771,46 @@ pub async fn build_expire_with_maker(
     // Account order MUST match `ExpireWithMaker` in
     // chain/programs/nyxbid/src/instructions/expire_with_maker.rs.
     let metas = vec![
-        AccountMeta::new(payer, true),                          // payer (signer, mut)
-        AccountMeta::new(intent_pk, false),                     // intent (mut)
-        AccountMeta::new(escrow_pda, false),                    // escrow (mut, closes)
-        AccountMeta::new(taker_vault_pda, false),               // taker_vault (mut)
-        AccountMeta::new(taker_destination_ata, false),         // taker_destination
-        AccountMeta::new(intent_acc.taker, false),              // taker_rent_beneficiary
-        AccountMeta::new(maker_vault_pda, false),               // maker_vault (mut)
-        AccountMeta::new(maker_destination_ata, false),         // maker_destination
-        AccountMeta::new(maker, false),                         // maker_rent_beneficiary
-        AccountMeta::new(reputation_pda, false),                // reputation (mut)
-        AccountMeta::new_readonly(np::id::TOKEN, false),        // token_program
+        AccountMeta::new(payer, true),                   // payer (signer, mut)
+        AccountMeta::new(intent_pk, false),              // intent (mut)
+        AccountMeta::new(escrow_pda, false),             // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),        // taker_vault (mut)
+        AccountMeta::new(taker_destination_ata, false),  // taker_destination
+        AccountMeta::new(intent_acc.taker, false),       // taker_rent_beneficiary
+        AccountMeta::new(maker_vault_pda, false),        // maker_vault (mut)
+        AccountMeta::new(maker_destination_ata, false),  // maker_destination
+        AccountMeta::new(maker, false),                  // maker_rent_beneficiary
+        AccountMeta::new(reputation_pda, false),         // reputation (mut)
+        AccountMeta::new_readonly(np::id::TOKEN, false), // token_program
+    ];
+
+    // Two destinations need prepending here: taker gets their locked
+    // leg back, maker gets the leg they funded back. Either ATA may
+    // not exist on a fresh wallet, so we always prepend create_idempotent.
+    let ixs = vec![
+        create_idempotent_ata_ix(
+            &payer,
+            &taker_destination_ata,
+            &intent_acc.taker,
+            &escrow_acc.taker_mint,
+        ),
+        create_idempotent_ata_ix(
+            &payer,
+            &maker_destination_ata,
+            &maker,
+            &escrow_acc.maker_mint,
+        ),
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
     ];
 
     finalize_tx(
         sol,
         &payer,
-        vec![Instruction {
-            program_id: np::id::PROGRAM,
-            accounts: metas,
-            data,
-        }],
+        ixs,
         PreparedAccounts {
             escrow: Some(escrow_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
@@ -764,11 +841,9 @@ pub async fn build_expire_no_maker(
     let payer = parse_pk("payer", &req.payer)?;
     let intent_pk = parse_pk("intent", &req.intent)?;
 
-    let intent_acc =
-        require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
+    let intent_acc = require_account::<np::state::Intent>(sol, &intent_pk, "intent").await?;
     let escrow_pda = np::pda::escrow(&intent_pk).0;
-    let escrow_acc =
-        require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
+    let escrow_acc = require_account::<np::state::Escrow>(sol, &escrow_pda, "escrow").await?;
     let taker_vault_pda = np::pda::taker_vault(&intent_pk).0;
     let taker_destination_ata =
         np::pda::associated_token(&intent_acc.taker, &escrow_acc.taker_mint).0;
@@ -778,12 +853,9 @@ pub async fn build_expire_no_maker(
     // sentinel for the not-present case.
     let has_winner = intent_acc.winning_quote != Pubkey::default();
     let (winning_quote_meta_key, winning_reputation_meta_key) = if has_winner {
-        let q = require_account::<np::state::Quote>(
-            sol,
-            &intent_acc.winning_quote,
-            "winning_quote",
-        )
-        .await?;
+        let q =
+            require_account::<np::state::Quote>(sol, &intent_acc.winning_quote, "winning_quote")
+                .await?;
         let rep = np::pda::reputation(&q.maker).0;
         (intent_acc.winning_quote, rep)
     } else {
@@ -795,25 +867,38 @@ pub async fn build_expire_no_maker(
     // Account order MUST match `ExpireNoMaker` in
     // chain/programs/nyxbid/src/instructions/expire_no_maker.rs.
     let metas = vec![
-        AccountMeta::new(payer, true),                          // payer (signer, mut)
-        AccountMeta::new(intent_pk, false),                     // intent (mut)
-        AccountMeta::new(escrow_pda, false),                    // escrow (mut, closes)
-        AccountMeta::new(taker_vault_pda, false),               // taker_vault (mut)
-        AccountMeta::new(taker_destination_ata, false),         // taker_destination
-        AccountMeta::new(intent_acc.taker, false),              // taker_rent_beneficiary
+        AccountMeta::new(payer, true),                  // payer (signer, mut)
+        AccountMeta::new(intent_pk, false),             // intent (mut)
+        AccountMeta::new(escrow_pda, false),            // escrow (mut, closes)
+        AccountMeta::new(taker_vault_pda, false),       // taker_vault (mut)
+        AccountMeta::new(taker_destination_ata, false), // taker_destination
+        AccountMeta::new(intent_acc.taker, false),      // taker_rent_beneficiary
         AccountMeta::new_readonly(winning_quote_meta_key, false), // winning_quote (Option)
-        AccountMeta::new(winning_reputation_meta_key, false),   // winning_maker_reputation (Option)
-        AccountMeta::new_readonly(np::id::TOKEN, false),        // token_program
+        AccountMeta::new(winning_reputation_meta_key, false), // winning_maker_reputation (Option)
+        AccountMeta::new_readonly(np::id::TOKEN, false), // token_program
+    ];
+
+    // Prepend ATA-create for taker_destination. expire_no_maker only
+    // refunds the taker leg (no maker leg was funded by definition),
+    // so one ATA is enough.
+    let ixs = vec![
+        create_idempotent_ata_ix(
+            &payer,
+            &taker_destination_ata,
+            &intent_acc.taker,
+            &escrow_acc.taker_mint,
+        ),
+        Instruction {
+            program_id: np::id::PROGRAM,
+            accounts: metas,
+            data,
+        },
     ];
 
     finalize_tx(
         sol,
         &payer,
-        vec![Instruction {
-            program_id: np::id::PROGRAM,
-            accounts: metas,
-            data,
-        }],
+        ixs,
         PreparedAccounts {
             escrow: Some(escrow_pda.to_string()),
             taker_vault: Some(taker_vault_pda.to_string()),
@@ -882,10 +967,7 @@ fn parse_pk(field: &'static str, s: &str) -> Result<Pubkey, TxBuildError> {
     })
 }
 
-fn parse_fixed_hex<const N: usize>(
-    field: &'static str,
-    s: &str,
-) -> Result<[u8; N], TxBuildError> {
+fn parse_fixed_hex<const N: usize>(field: &'static str, s: &str) -> Result<[u8; N], TxBuildError> {
     let raw = hex::decode(s).map_err(|e| TxBuildError::BadHex {
         field,
         error: e.to_string(),
@@ -930,10 +1012,8 @@ mod tests {
 
         // Round-trip: borsh decode the body.
         let decoded =
-            <np::params::CreateIntentParams as borsh::BorshDeserialize>::try_from_slice(
-                &data[8..],
-            )
-            .unwrap();
+            <np::params::CreateIntentParams as borsh::BorshDeserialize>::try_from_slice(&data[8..])
+                .unwrap();
         assert_eq!(decoded.size, params.size);
         assert_eq!(decoded.limit_price, params.limit_price);
         assert_eq!(decoded.commitment_root, params.commitment_root);
@@ -946,16 +1026,13 @@ mod tests {
             commitment: [9u8; 32],
             nonce: [4u8; 16],
         };
-        let data =
-            np::params::encode_ix_data(np::discriminator::ix::SUBMIT_QUOTE, &p).unwrap();
+        let data = np::params::encode_ix_data(np::discriminator::ix::SUBMIT_QUOTE, &p).unwrap();
         assert_eq!(&data[..8], &np::discriminator::ix::SUBMIT_QUOTE);
         // 32 + 16 = 48 param bytes
         assert_eq!(data.len(), 8 + 48);
         let decoded =
-            <np::params::SubmitQuoteParams as borsh::BorshDeserialize>::try_from_slice(
-                &data[8..],
-            )
-            .unwrap();
+            <np::params::SubmitQuoteParams as borsh::BorshDeserialize>::try_from_slice(&data[8..])
+                .unwrap();
         assert_eq!(decoded.commitment, p.commitment);
         assert_eq!(decoded.nonce, p.nonce);
     }
@@ -967,8 +1044,7 @@ mod tests {
             revealed_size: 987_654_321,
             nonce: [5u8; 32],
         };
-        let data =
-            np::params::encode_ix_data(np::discriminator::ix::REVEAL_QUOTE, &p).unwrap();
+        let data = np::params::encode_ix_data(np::discriminator::ix::REVEAL_QUOTE, &p).unwrap();
         assert_eq!(&data[..8], &np::discriminator::ix::REVEAL_QUOTE);
         // u64 + u64 + [u8;32] = 48 param bytes
         assert_eq!(data.len(), 8 + 48);
@@ -976,9 +1052,7 @@ mod tests {
 
     #[test]
     fn fund_maker_escrow_data_layout() {
-        let p = np::params::FundMakerEscrowParams {
-            amount: 9_999_999,
-        };
+        let p = np::params::FundMakerEscrowParams { amount: 9_999_999 };
         let data =
             np::params::encode_ix_data(np::discriminator::ix::FUND_MAKER_ESCROW, &p).unwrap();
         assert_eq!(&data[..8], &np::discriminator::ix::FUND_MAKER_ESCROW);

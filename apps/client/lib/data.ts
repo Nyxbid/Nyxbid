@@ -21,6 +21,10 @@ export interface Intent {
   limit_price: number;
   reveal_deadline: string;
   resolve_deadline: string;
+  /** Last moment the winning maker can call `settle` before the
+   *  taker can recover via `expire_with_maker`. Used to gate the
+   *  fund-maker-escrow CTA on the intent detail page. */
+  settle_deadline: string;
   commitment_root: string;
   status: IntentStatus;
   winning_quote: string | null;
