@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { Fill } from "@/lib/data";
 import { useLiveResource } from "@/hooks/use-live-list";
+import { Paginator, usePagination } from "@/components/pagination";
 import {
   explorerTxUrl,
   formatPrice,
@@ -17,6 +18,7 @@ export function LiveFillsTable({ initial }: { initial: Fill[] }) {
     initial,
     (env) => env.event.kind === "settled",
   );
+  const pager = usePagination(data, 20);
 
   if (data.length === 0) {
     return (
@@ -29,21 +31,22 @@ export function LiveFillsTable({ initial }: { initial: Fill[] }) {
   }
 
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-[var(--hairline)]">
-            <Th>Intent</Th>
-            <Th>Taker</Th>
-            <Th>Maker</Th>
-            <Th align="right">Size</Th>
-            <Th align="right">Price</Th>
-            <Th>Tx</Th>
-            <Th align="right">When</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((f) => (
+    <div className="card">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-[var(--hairline)]">
+              <Th>Intent</Th>
+              <Th>Taker</Th>
+              <Th>Maker</Th>
+              <Th align="right">Size</Th>
+              <Th align="right">Price</Th>
+              <Th>Tx</Th>
+              <Th align="right">When</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {pager.rows.map((f) => (
             <tr
               key={f.id}
               className="border-b border-[var(--hairline)] last:border-0 hover:bg-[var(--surface-2)]"
@@ -96,9 +99,22 @@ export function LiveFillsTable({ initial }: { initial: Fill[] }) {
                 </span>
               </Td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Paginator
+        page={pager.page}
+        pageCount={pager.pageCount}
+        from={pager.from}
+        to={pager.to}
+        total={pager.total}
+        onPrev={pager.prev}
+        onNext={pager.next}
+        canPrev={pager.canPrev}
+        canNext={pager.canNext}
+        noun="fills"
+      />
     </div>
   );
 }

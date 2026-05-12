@@ -6,10 +6,14 @@ import type { Intent } from "@/lib/data";
 import { useLiveResource } from "@/hooks/use-live-list";
 import { StatusPill } from "@/components/status-pill";
 import { Countdown } from "@/components/countdown";
+import { Paginator, usePagination } from "@/components/pagination";
 import { formatPrice, shortPk } from "@/lib/format";
 
 export function LiveIntentsTable({ initial }: { initial: Intent[] }) {
   const { data } = useLiveResource<Intent[]>("/api/intents", initial);
+  // 20 rows per page keeps the table inside a 1080p viewport without
+  // the parent div needing to scroll independently of the page.
+  const pager = usePagination(data, 20);
 
   if (data.length === 0) {
     return (
@@ -28,20 +32,21 @@ export function LiveIntentsTable({ initial }: { initial: Intent[] }) {
   }
 
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-[var(--hairline)]">
-            <Th>Intent</Th>
-            <Th>Side</Th>
-            <Th align="right">Size</Th>
-            <Th align="right">Limit</Th>
-            <Th>Status</Th>
-            <Th align="right">Reveal</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((i) => (
+    <div className="card">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-[var(--hairline)]">
+              <Th>Intent</Th>
+              <Th>Side</Th>
+              <Th align="right">Size</Th>
+              <Th align="right">Limit</Th>
+              <Th>Status</Th>
+              <Th align="right">Reveal</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {pager.rows.map((i) => (
             <tr
               key={i.id}
               className="border-b border-[var(--hairline)] last:border-0 hover:bg-[var(--surface-2)]"
@@ -88,9 +93,22 @@ export function LiveIntentsTable({ initial }: { initial: Intent[] }) {
                 )}
               </Td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Paginator
+        page={pager.page}
+        pageCount={pager.pageCount}
+        from={pager.from}
+        to={pager.to}
+        total={pager.total}
+        onPrev={pager.prev}
+        onNext={pager.next}
+        canPrev={pager.canPrev}
+        canNext={pager.canNext}
+        noun="intents"
+      />
     </div>
   );
 }
