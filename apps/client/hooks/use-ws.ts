@@ -18,20 +18,26 @@ import { websocketUrl } from "@/lib/api";
  * tears down both the socket and the reconnect timer so the page
  * never leaks connections.
  *
+ * `onConnected` fires every time the socket transitions to OPEN —
+ * including after a reconnect — so callers can refetch their REST
+ * snapshot and pick up any events the page missed while offline.
+ *
  * Doherty Threshold: a chain event reaches the UI within one slot
  * (~400ms) of landing on chain.
  */
 export function useChainStream(
   onEnvelope: (env: ChainEnvelope) => void,
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; onConnected?: () => void } = {},
 ): void {
   const enabled = options.enabled ?? true;
   const handlerRef = useRef(onEnvelope);
+  const connectedRef = useRef(options.onConnected);
   // Keep the latest handler in a ref via a layout-effect so the
   // WebSocket message dispatcher always calls the freshest closure
   // without us having to re-create the socket on every render.
   useLayoutEffect(() => {
     handlerRef.current = onEnvelope;
+    connectedRef.current = options.onConnected;
   });
 
   useEffect(() => {
@@ -48,6 +54,7 @@ export function useChainStream(
 
       socket.onopen = () => {
         attempt = 0;
+        connectedRef.current?.();
       };
 
       socket.onmessage = (e) => {

@@ -186,9 +186,19 @@ export function IntentDetail({ initialIntent, initialQuotes }: Props) {
 
 // ----- header -------------------------------------------------------
 
+// SSR-stable clock. Returning `Date.now()` on the server and a
+// different value during client hydration used to silently re-render
+// the action card (CancelCard vs SubmitQuoteCard vs FundEscrowCard)
+// because the deadline comparisons would flip, sometimes producing a
+// hydration warning. We initialise to `0` so the first SSR + client
+// paint agree (every "before-deadline" check evaluates true, which
+// matches the open-phase default UI), then swap in real time after
+// mount.
 function useNow(intervalMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number>(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot bootstrap from a non-deterministic source (Date.now) is the recommended workaround for SSR hydration of clocks
+    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);

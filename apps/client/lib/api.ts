@@ -33,20 +33,30 @@ export class ApiError extends Error {
 }
 
 async function parseJsonOrThrow<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let payload: unknown;
+  // Read the body exactly once. Doing `res.json()` then falling back to
+  // `res.text()` blows up with "Body has already been read" because the
+  // first call drains the stream even on parse failure.
+  const raw = await res.text();
+  let payload: unknown = raw;
+  if (raw) {
     try {
-      payload = await res.json();
+      payload = JSON.parse(raw);
     } catch {
-      payload = await res.text();
+      // Keep the raw text — server probably returned a plain string error.
     }
+  }
+
+  if (!res.ok) {
     const message =
       typeof payload === "object" && payload && "message" in payload
         ? String((payload as { message: unknown }).message)
-        : `${res.status} ${res.statusText}`;
+        : typeof payload === "string" && payload.length > 0
+          ? payload
+          : `${res.status} ${res.statusText}`;
     throw new ApiError(res.status, message, payload);
   }
-  return res.json() as Promise<T>;
+
+  return payload as T;
 }
 
 export async function fetchJson<T>(

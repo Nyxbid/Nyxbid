@@ -27,6 +27,17 @@ import { useChainStream } from "@/hooks/use-ws";
  * Refetches are debounced at 250ms so a burst of events (e.g. five
  * quotes within one slot) collapses into a single read.
  *
+ * Beyond chain events, we also refresh:
+ *   - **on mount**, so the SSR seed (which may be seconds-to-minutes
+ *     stale by the time the user navigates back) gets reconciled.
+ *   - **on tab focus / visibility change**, so coming back from
+ *     another tab shows current state without a hard reload.
+ *   - **on WS reconnect** (`onConnected`), so a network blip doesn't
+ *     leave us looking at a frozen book.
+ *
+ * Together these kill the "I had to refresh the page to see my
+ * intent" feedback loop.
+ *
  * Doherty: live -> visible in <1 slot under normal conditions.
  */
 export function useLiveResource<T>(
@@ -65,7 +76,30 @@ export function useLiveResource<T>(
     [refresh],
   );
 
-  useChainStream(onEnvelope);
+  useChainStream(onEnvelope, { onConnected: refresh });
+
+  // Reconcile the SSR seed once after mount. Without this, navigating
+  // back to a dashboard page shows stale data until a chain event
+  // wakes it up.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: the SSR seed needs a one-shot revalidate on the client to stay fresh after back/forward navigation
+    void refresh();
+  }, [refresh]);
+
+  // Refresh whenever the tab regains focus / visibility. Browsers
+  // throttle background tabs and may pause WS frames, so the snapshot
+  // is the easiest way to catch back up on return.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refresh]);
 
   useEffect(() => {
     return () => {
