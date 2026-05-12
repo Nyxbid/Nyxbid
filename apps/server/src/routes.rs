@@ -388,11 +388,17 @@ async fn tx_status(
 /// `GET /ws`: upgrade to WebSocket, then push every chain event as a
 /// JSON message. The browser side gets push-based updates without the
 /// reconnection ergonomics of SSE EventSource.
+///
+/// Subscribes to `ui_tx` rather than `chain_tx` so each event delivered
+/// here is guaranteed to be visible in the indexed REST store. Without
+/// this, a client that refetches `/api/...` on receipt of the event
+/// would race the state-apply task and frequently see stale data — the
+/// "I had to refresh after settle/fund/bid" bug.
 async fn ws_upgrade(
     State(state): State<SharedState>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    let rx = state.read().await.chain_tx.subscribe();
+    let rx = state.read().await.ui_tx.subscribe();
     ws.on_upgrade(move |socket| ws_pump(socket, rx))
 }
 

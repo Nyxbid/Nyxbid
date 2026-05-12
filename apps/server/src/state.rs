@@ -25,9 +25,16 @@ pub struct AppState {
     /// `/api/dashboard`, and `/api/intents/{id}/quotes`.
     pub store: SharedStore,
     /// Decoded on-chain events fed by the log indexer. Subscribed to by
-    /// the websocket route (Commit 8) and the state-apply task that
-    /// keeps `store` warm.
+    /// the state-apply task and A2A consumers that want raw events the
+    /// moment the chain confirms them, with no coupling to the indexed
+    /// REST store.
     pub chain_tx: broadcast::Sender<ChainEnvelope>,
+    /// Re-broadcast of [`Self::chain_tx`] published only *after* the
+    /// state-apply task has finished refetching the touched accounts
+    /// and updated [`Self::store`]. The browser `/ws` route subscribes
+    /// here so a client that refetches REST on receipt of the event
+    /// always sees the post-event store state, not the pre-event one.
+    pub ui_tx: broadcast::Sender<ChainEnvelope>,
     /// Indexer health counters, surfaced via `/health`.
     pub indexer_metrics: Option<Arc<IndexerMetrics>>,
     /// In-memory A2A task registry. Backs `tasks/get` and
@@ -54,6 +61,7 @@ impl AppState {
         solana: Option<SolanaClient>,
         store: SharedStore,
         chain_tx: broadcast::Sender<ChainEnvelope>,
+        ui_tx: broadcast::Sender<ChainEnvelope>,
         indexer_metrics: Option<Arc<IndexerMetrics>>,
     ) -> Self {
         // Derive the SOL/USDC market from whatever USDC mint the
@@ -80,6 +88,7 @@ impl AppState {
             solana,
             store,
             chain_tx,
+            ui_tx,
             indexer_metrics,
             tasks: TaskStore::new(),
             push_notifications: PushNotificationStore::new(),

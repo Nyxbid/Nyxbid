@@ -66,9 +66,19 @@ async fn main() {
         );
     }
 
-    // Chain-event broadcast channel feeds: (a) the state-apply task that
-    // keeps the store warm, and (b) the SSE/WebSocket subscribers.
+    // Chain-event broadcast channels.
+    //
+    // `chain_tx`: indexer -> state-apply task + raw A2A subscribers.
+    //   Fires the moment the log decode succeeds, before the store has
+    //   been reconciled.
+    //
+    // `ui_tx`: state-apply task -> browser `/ws` route. Re-fires the
+    //   *same* envelope only after `apply_updates()` has written the
+    //   freshly fetched account data into the store. This eliminates
+    //   the race where a client refetched `/api/...` on the WS event
+    //   and got back the pre-event store snapshot.
     let (chain_tx, _) = broadcast::channel::<ChainEnvelope>(1024);
+    let (ui_tx, _) = broadcast::channel::<ChainEnvelope>(1024);
 
     // Chain-indexed store. Cold-start backfill runs *before* the indexer
     // starts pushing live events so we don't race RPC with itself.
@@ -94,6 +104,7 @@ async fn main() {
     if let Some(sol) = sol.clone() {
         let store = Arc::clone(&store);
         let mut rx = chain_tx.subscribe();
+        let ui_tx_for_apply = ui_tx.clone();
         tokio::spawn(async move {
             loop {
                 match rx.recv().await {
@@ -107,11 +118,22 @@ async fn main() {
                                     signature = %env.signature,
                                     "store fetch failed; skipping event"
                                 );
+                                // Even on fetch failure, forward the envelope
+                                // to the UI channel so clients aren't left in
+                                // the dark — they'll refetch and see whatever
+                                // partial state the store has.
+                                let _ = ui_tx_for_apply.send(env);
                                 continue;
                             }
                         };
                         // Phase 2: apply — short write lock.
                         store.write().await.apply_updates(updates);
+                        // Phase 3: tell the browser. Doing it *after* the
+                        // write means a client that refetches REST in
+                        // response always sees the post-event store
+                        // snapshot, not the pre-event one. No more
+                        // "I had to refresh" after settle / fund / bid.
+                        let _ = ui_tx_for_apply.send(env);
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         tracing::warn!(skipped = n, "state-apply task lagged behind broadcast channel");
@@ -129,6 +151,7 @@ async fn main() {
         sol,
         store,
         chain_tx,
+        ui_tx,
         indexer_metrics,
     )));
 

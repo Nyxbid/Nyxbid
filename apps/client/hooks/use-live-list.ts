@@ -24,29 +24,41 @@ import { useChainStream } from "@/hooks/use-ws";
  * - `shouldRefresh`: predicate over the chain envelope; only refetch
  *   when the event is relevant.
  *
- * Refetches are debounced at 250ms so a burst of events (e.g. five
- * quotes within one slot) collapses into a single read.
+ * Refresh schedule on a matched event:
+ *   1. immediate (the server now only publishes WS events *after* its
+ *      state-apply task has reconciled the store, so this almost
+ *      always returns post-event data);
+ *   2. retry at 800ms in case a slow RPC pushed the apply past the WS
+ *      hop;
+ *   3. retry at 2500ms as a last-chance for confirmed-vs-finalized
+ *      lag on devnet.
  *
  * Beyond chain events, we also refresh:
- *   - **on mount**, so the SSR seed (which may be seconds-to-minutes
- *     stale by the time the user navigates back) gets reconciled.
+ *   - **on mount**, so the SSR seed (which may be stale by the time
+ *     the user navigates back) gets reconciled.
  *   - **on tab focus / visibility change**, so coming back from
  *     another tab shows current state without a hard reload.
  *   - **on WS reconnect** (`onConnected`), so a network blip doesn't
  *     leave us looking at a frozen book.
+ *   - **every 8s as a poll fallback**, so even if the WS silently
+ *     dies (proxy timeout, mobile background tab, etc.) the page
+ *     still catches up within a few seconds.
  *
  * Together these kill the "I had to refresh the page to see my
  * intent" feedback loop.
  *
  * Doherty: live -> visible in <1 slot under normal conditions.
  */
+const RETRY_DELAYS_MS = [0, 800, 2500] as const;
+const POLL_INTERVAL_MS = 8000;
+
 export function useLiveResource<T>(
   path: string,
   seed: T,
   shouldRefresh: (env: ChainEnvelope) => boolean = () => true,
 ): { data: T; refresh: () => Promise<void> } {
   const [data, setData] = useState<T>(seed);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const predicateRef = useRef(shouldRefresh);
   // Sync the latest predicate via layout-effect — `useChainStream`
   // reads `predicateRef.current` from inside the WS handler, so the
@@ -55,25 +67,39 @@ export function useLiveResource<T>(
     predicateRef.current = shouldRefresh;
   });
 
+  const clearTimers = useCallback(() => {
+    for (const t of timersRef.current) clearTimeout(t);
+    timersRef.current.clear();
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const next = await fetchJson<T>(path);
       setData(next);
     } catch {
-      // Keep last good value; next event will retry.
+      // Keep last good value; next event or poll tick will retry.
     }
   }, [path]);
+
+  /** Schedule a burst of refreshes that cover the indexer ↔ store
+   *  race window without spamming the server. */
+  const scheduleBurst = useCallback(() => {
+    clearTimers();
+    for (const delay of RETRY_DELAYS_MS) {
+      const t = setTimeout(() => {
+        timersRef.current.delete(t);
+        void refresh();
+      }, delay);
+      timersRef.current.add(t);
+    }
+  }, [clearTimers, refresh]);
 
   const onEnvelope = useCallback(
     (env: ChainEnvelope) => {
       if (!predicateRef.current(env)) return;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        debounceRef.current = null;
-        void refresh();
-      }, 250);
+      scheduleBurst();
     },
-    [refresh],
+    [scheduleBurst],
   );
 
   useChainStream(onEnvelope, { onConnected: refresh });
@@ -101,11 +127,19 @@ export function useLiveResource<T>(
     };
   }, [refresh]);
 
+  // Low-frequency poll as a fallback if the WS silently dies. Cheap
+  // (~8s) and pauses when the tab isn't visible to avoid hammering
+  // the server with background work.
   useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+    const id = setInterval(() => {
+      if (typeof document === "undefined") return;
+      if (document.visibilityState !== "visible") return;
+      void refresh();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [refresh]);
+
+  useEffect(() => clearTimers, [clearTimers]);
 
   return { data, refresh };
 }
