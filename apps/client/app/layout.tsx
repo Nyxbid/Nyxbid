@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { SolanaWalletProvider } from "@/components/wallet-provider";
 import { ToastProvider } from "@/components/toast";
@@ -53,6 +54,7 @@ export default function RootLayout({
         <SolanaWalletProvider>
           <ToastProvider>{children}</ToastProvider>
         </SolanaWalletProvider>
+        <Analytics />
       </body>
     </html>
   );
